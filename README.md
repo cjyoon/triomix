@@ -70,7 +70,7 @@ results in `{OUTPUT_DIR}/{PREFIX}.counts`. This is file is the sole input for th
 ```bash
 $ Rscript chimera_likelihood.R -i $OUTPUT_DIR/$PREFIX.counts -o mle
 ```
-Results in VAF histograms and MLE estimated reesults. 
+Results in VAF histograms and MLE estimated results. 
 
 
 
