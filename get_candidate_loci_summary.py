@@ -84,8 +84,8 @@ def get_parent_het_homref_child_count(child_id, father_id, mother_id, vcf, prefi
     prev_chrom = ''
     chrom_list = get_chromosome_list(vcf)
     autosome_list = [i for i in chrom_list if not re.search(r'X|Y', i)]
-    with open(os.path.join(output_dir, f'{child_id}.counts'), 'w') as f:
-        f.write('alt\tdepth\tvaf\n')
+    with open(os.path.join(output_dir, f'{prefix}.counts'), 'w') as f:
+        f.write('chrom\tpos\trefbase\taltbase\talt\tdepth\tvaf\n')
 
         for variant in cyvcf2.VCF(vcf):
             if  variant.CHROM in autosome_list:
@@ -110,7 +110,7 @@ def get_parent_het_homref_child_count(child_id, father_id, mother_id, vcf, prefi
                 prev_chrom = current_chrom
                 if father_depth > 20 and mother_depth > 20 and child_depth > 20:
                     if (father_vaf > 0.4 and father_vaf < 0.6 and mother_vaf< 0.01) or (mother_vaf > 0.4 and mother_vaf < 0.6 and father_vaf < 0.01):
-                        f.write(f'{child_alt}\t{child_depth}\t{child_vaf}\n')
+                        f.write(f'{variant.CHROM}\t{variant.POS}\t{variant.REF}\t{variant.ALT[0]}\t{child_alt}\t{child_depth}\t{child_vaf}\n')
     
     
             

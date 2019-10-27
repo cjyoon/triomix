@@ -63,14 +63,14 @@ $ OUTPUT_DIR=result
 $ PREFIX=family
 $ python get_candidate_loci_summary.py -f father_rg -m mother_rg -c child_rg -o $OUTPUT_DIR -p $PREFIX
 ```
-results in `result/family.vafs`. This is file is the sole input for the last step. 
+results in `{OUTPUT_DIR}/{PREFIX}.counts`. This is file is the sole input for the last step. 
 
 
 # Step3: MLE estimate
 ```bash
-$ Rscript chimera_likelihood.R 
+$ Rscript chimera_likelihood.R -i $OUTPUT_DIR/$PREFIX.counts -o mle
 ```
-
+Results in VAF histograms and MLE estimated reesults. 
 
 
 

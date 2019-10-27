@@ -1,30 +1,14 @@
-# VEP configuration
-# Local GRChX installation and Cache version for assemblies
-cache_version_mapper:
-    GRCh37: 91
-    GRCh38: 93
-# gnomAD annotation database downloaded from VEP site
-gnomad_genome_mapper:
-    GRCh37: /home/users/cjyoon/.vep/gnomad/GRCh37/gnomad.genomes.r2.0.1.sites.noVEP.vcf.gz
-    GRCh38: /home/users/cjyoon/.vep/gnomad/GRCh38/gnomad.genomes.r2.0.1.sites.GRCh38.noVEP.vcf.gz
-VEP_CACHE_DIR: /home/users/cjyoon/.vep
-VEP_PATH: /home/users/cjyoon/anaconda3/envs/vep/bin/vep
+# path to executables (default: Assumes that these are in the PATH)
+SAMTOOLS: samtools
+BGZIP: bgzip
+TABIX: tabix
+BCFTOOLS: bcftools
+VT:  vt
 
-PER5LIB: /home/users/cjyoon/anaconda3/envs/vep/lib/perl5/site_perl/5.22.0/x86_64-linux-thread-multi
-VEP_ENVIRON: /home/usrs/cjyoon/anaconda3/bin:/home/users/cjyoon/anaconda3/envs/vep/bin
-# other tools used in the script
-SAMTOOLS: /home/users/cjyoon/anaconda3/bin/samtools
-BGZIP: /home/users/cjyoon/anaconda3/bin/bgzip
-TABIX: /home/users/cjyoon/anaconda3/bin/tabix
-BCFTOOLS: /home/users/cjyoon/anaconda3/bin/bcftools
-
-# used in varscan_parallel.smk
+# used in chimeraseq.smk
 JAVA: /home/users/cjyoon/anaconda3/bin/java
 VARSCAN: /home/users/cjyoon/tools/VarScan.v2.3.9.jar
-VT:  /home/users/cjyoon/anaconda3/bin/vt
-GATK: /home/users/cjyoon/tools/GenomeAnalysisTK-3.8-1/GenomeAnalysisTK.jar
-GET_CANDIDATE_LOCI_COUNTS: /home/users/cjyoon/scripts/chimeraseq/get_candidate_loci_summary.py
-CHIMERA_LIKELIHOOD: /home/users/cjyoon/scripts/chimeraseq/chimera_likelihood.R
+
 
 # REFERENCE and DBSNP
 GRCh38_REFERENCE: /home/users/cjyoon/Projects/mosaic/reference/Homo_sapiens_assembly38.fasta

@@ -17,8 +17,8 @@ GATK = config['GATK']
 BGZIP = config['BGZIP']
 TABIX = config['TABIX']
 BCFTOOLS = config['BCFTOOLS']
-GET_CANDIDATE_LOCI_COUNTS = config['GET_CANDIDATE_LOCI_COUNTS']
-CHIMERA_LIKELIHOOD = config['CHIMERA_LIKELIHOOD']
+GET_CANDIDATE_LOCI_COUNTS = srcdir('get_candidate_loci_summary.py')
+CHIMERA_LIKELIHOOD = srcdir('chimera_likelihood.R')
 
 def sampleNameBam(bamFile):
     """get @RG SM: information as sample name from BAM header"""
@@ -160,7 +160,6 @@ rule remove_non_atgc:
         for variant in vcf_handle:
             if re.search(r'[ATGC]+', variant.REF) and re.search(r'[ATGC]+', variant.ALT[0]):
                 output_handle.write_record(variant)
-                print(variant)
 
         vcf_handle.close()
         output_handle.close()
