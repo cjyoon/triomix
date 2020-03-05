@@ -93,7 +93,7 @@ rule mpileup2snv:
 
     output: 
         snvvcf = 'varscan/{family_id}_tmp/{family_id}.{chrom}.varscan.snp.vcf.gz',     
-    threads: 2
+    threads: 1
     log:
         "logs/{family_id}.{chrom}.mpileup2snv.log"
     shell:
@@ -112,7 +112,7 @@ rule mpileup2indel:
         chrom = '{chrom}'
     output: 
         indelvcf = 'varscan/{family_id}_tmp/{family_id}.{chrom}.varscan.indel.vcf.gz',     
-    threads: 2
+    threads: 1
     log:
         "logs/{family_id}.{chrom}.mpileup2indel.log"
     shell:
@@ -185,6 +185,7 @@ rule get_count_summary:
         father_bam = lambda wildcards: config['family'][wildcards.family_id]['father'],
         mother_bam = lambda wildcards: config['family'][wildcards.family_id]['mother'],
         child_bam = lambda wildcards: config['family'][wildcards.family_id]['child'],
+        GET_CANDIDATE_LOCI_COUNTS = GET_CANDIDATE_LOCI_COUNTS
     output:
         counts = 'count_summary/{family_id}.counts'
     threads: 1
@@ -196,11 +197,12 @@ rule get_count_summary:
         father_id = sampleNameBam(input.father_bam[0])
         mother_id = sampleNameBam(input.mother_bam[0])
         child_id = sampleNameBam(input.child_bam[0])
-        shell("(python {GET_CANDIDATE_LOCI_COUNTS} -i {input.vcf} -f {father_id} -m {mother_id} -c {child_id} -o count_summary -p {params.family_id}) &> {log}")
+        shell("(python {input.GET_CANDIDATE_LOCI_COUNTS} -i {input.vcf} -f {father_id} -m {mother_id} -c {child_id} -o count_summary -p {params.family_id}) &> {log}")
 
 rule mle:
     input:
-        counts = 'count_summary/{family_id}.counts'
+        counts = 'count_summary/{family_id}.counts',
+        # CHIMERA_LIKELIHOOD = CHIMERA_LIKELIHOOD
     output:
         mle = 'mle/{family_id}.counts.mle.pdf'
     threads: 1
