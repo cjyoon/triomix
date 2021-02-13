@@ -41,6 +41,12 @@ else:
     sys.exit(1)
 
 
+if 'depth' in config.keys():
+    DEPTH_THRESHOLD_CHILD = int(config['depth'])
+else:
+    DEPTH_THRESHOLD_CHILD = 10 # Default child depth threshold = 10 if not specified
+print(DEPTH_THRESHOLD_CHILD)
+
 def sampleNameBam(bamFile):
     """get @RG SM: information as sample name from BAM header"""
     bam = pysam.AlignmentFile(bamFile)
@@ -63,7 +69,8 @@ rule all:
     input:
         expand('varscan/{family_id}.varscan.acgt.vtdcn.dbsnpa.vcf.gz', family_id = config['family']) + \
         expand('count_summary/{family_id}.counts', family_id = config['family']) + \
-        expand('mle/{family_id}.counts.mle.pdf', family_id = config['family'])
+        expand('mle/{family_id}.counts.mle.pdf', family_id = config['family']) #+ \
+        # expand('samplelist/{family_id}.samplelist', family_id = config['family'])
 
 
 rule write_sample_name:
@@ -131,7 +138,7 @@ rule merge_snp_indel:
     shell:
         "({BCFTOOLS} concat {input.indelvcf} {input.snvvcf} -o {output.family_vcf} -O z -a ) &> {log} "
 
-rule vt_decompoase_normalize:
+rule vt_decompose_normalize:
     input:
         family_vcf = 'varscan/{family_id}_tmp/{family_id}.varscan.acgt.vcf.gz'
     output:
@@ -192,23 +199,26 @@ rule get_count_summary:
     log:
         "logs/{family_id}.count_summary.log"
     params:
-        family_id = '{family_id}'
+        family_id = '{family_id}', 
+        depth_threshold_child = DEPTH_THRESHOLD_CHILD
     run:
         father_id = sampleNameBam(input.father_bam[0])
         mother_id = sampleNameBam(input.mother_bam[0])
         child_id = sampleNameBam(input.child_bam[0])
-        shell("(python {input.GET_CANDIDATE_LOCI_COUNTS} -i {input.vcf} -f {father_id} -m {mother_id} -c {child_id} -o count_summary -p {params.family_id}) &> {log}")
+        shell("(python {input.GET_CANDIDATE_LOCI_COUNTS} -i {input.vcf} -f {father_id} -m {mother_id} -c {child_id} -o count_summary -p {params.family_id} -d {params.depth_threshold_child}) &> {log}")
 
 rule mle:
     input:
         counts = 'count_summary/{family_id}.counts',
-        # CHIMERA_LIKELIHOOD = CHIMERA_LIKELIHOOD
+        CHIMERA_LIKELIHOOD = CHIMERA_LIKELIHOOD
     output:
         mle = 'mle/{family_id}.counts.mle.pdf'
     threads: 1
+    params:
+        run_mode = 'all'
     log:
         "logs/{family_id}.mle.log"
     shell:
-        "(Rscript {CHIMERA_LIKELIHOOD} -i {input.counts} -o mle) &> {log}"
+        "(Rscript {input.CHIMERA_LIKELIHOOD} -i {input.counts} -o mle -r {params.run_mode} ) &> {log}"
 
 

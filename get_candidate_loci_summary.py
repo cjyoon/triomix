@@ -14,9 +14,11 @@ def argument_parser():
     parser.add_argument('-c', '--child_id', required=True, help='Readgroup ID of the child in the VCF file')
     parser.add_argument('-o', '--output_dir', required=False, default=os.getcwd(), help='Output directory')
     parser.add_argument('-p', '--prefix', required=True, help='Prefix for the output file')
+    parser.add_argument('-d', '--depth_threshold_child', required=True, type=int, default=10, help='threshold of the child at each loci')
+
     args = vars(parser.parse_args())
 
-    return args['varscan_vcf'], args['output_dir'], args['prefix'], args['father_id'], args['mother_id'], args['child_id']
+    return args['varscan_vcf'], args['output_dir'], args['prefix'], args['father_id'], args['mother_id'], args['child_id'], args['depth_threshold_child']
 
 
 def vaf(alt_count, depth):
@@ -78,7 +80,7 @@ def identify_trio_index(father_id, mother_id, child_id, vcf):
 
 
 
-def get_parent_het_homref_child_count(child_id, father_id, mother_id, vcf, prefix, output_dir):
+def get_parent_het_homref_child_count(child_id, father_id, mother_id, vcf, prefix, output_dir, depth_threshold_child):
     father_index, mother_index, child_index = identify_trio_index(father_id, mother_id, child_id, vcf)
     count = 0 
     prev_chrom = ''
@@ -108,7 +110,7 @@ def get_parent_het_homref_child_count(child_id, father_id, mother_id, vcf, prefi
                 # if prev_chrom != current_chrom:
                 #     print(current_chrom)
                 prev_chrom = current_chrom
-                if father_depth > 20 and mother_depth > 20 and child_depth > 20:
+                if father_depth > 20 and mother_depth > 20 and child_depth > depth_threshold_child:
                     if (father_vaf > 0.4 and father_vaf < 0.6 and mother_vaf< 0.01):
                         f.write(f'{variant.CHROM}\t{variant.POS}\t{variant.REF}\t{variant.ALT[0]}\t{child_alt}\t{child_depth}\t{child_vaf}\tF\n')
 
@@ -123,8 +125,8 @@ def get_parent_het_homref_child_count(child_id, father_id, mother_id, vcf, prefi
     return 0 
 
 def main():
-	varscan_vcf, output_dir, prefix, father_id, mother_id, child_id = argument_parser()
-	get_parent_het_homref_child_count(child_id, father_id, mother_id, varscan_vcf, prefix, output_dir)
+	varscan_vcf, output_dir, prefix, father_id, mother_id, child_id, depth_threshold_child = argument_parser()
+	get_parent_het_homref_child_count(child_id, father_id, mother_id, varscan_vcf, prefix, output_dir, depth_threshold_child)
 	return 0 
 
 if __name__=='__main__':
