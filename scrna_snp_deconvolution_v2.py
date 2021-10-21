@@ -3,7 +3,7 @@ chimera scRNAseq decomposition with common SNPs
 2020.09.26 cjyoon 
 2021.01.07 cjyoon
 2021.01.13 cjyoon
-
+2021.09.13 cjyoon writing intermediate table with SNP vs barcode
 """
 
 import sys
@@ -292,6 +292,15 @@ def main():
 
     za_snp_barcode = count_snp_in_scrna(scrna_bam, cb_filtered, zygote_variants[0])
     zb_snp_barcode = count_snp_in_scrna(scrna_bam, cb_filtered, zygote_variants[1])
+
+    za_snp_barcode_output =    os.path.join(output_dir, prefix + '.za.snp.deconv.tsv')
+    zb_snp_barcode_output =    os.path.join(output_dir, prefix + '.zb.snp.deconv.tsv')
+
+
+
+    za_snp_barcode.to_csv(za_snp_barcode_output, index=False, header=True, sep='\t')
+    zb_snp_barcode.to_csv(zb_snp_barcode_output, index=False, header=True, sep='\t')
+
 
     # print(snp_barcodes)
 

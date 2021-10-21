@@ -67,10 +67,12 @@ def bgzip_tabix(vcf_file):
 
 rule all:
     input:
+        expand('varscan/{family_id}_tmp/{family_id}.{chrom}.varscan.snp.vcf.gz', family_id=config['family'], chrom=chromosomes) + 
+        expand('varscan/{family_id}_tmp/{family_id}.{chrom}.varscan.indel.vcf.gz', family_id=config['family'], chrom=chromosomes) +
         expand('varscan/{family_id}.varscan.acgt.vtdcn.dbsnpa.vcf.gz', family_id = config['family']) + \
         expand('count_summary/{family_id}.counts', family_id = config['family']) + \
-        expand('mle/{family_id}.counts.mle.pdf', family_id = config['family']) #+ \
-        # expand('samplelist/{family_id}.samplelist', family_id = config['family'])
+        expand('mle/{family_id}.counts.mle.pdf', family_id = config['family']) + \
+        expand('samplelist/{family_id}.samplelist', family_id = config['family']) 
 
 
 rule write_sample_name:
