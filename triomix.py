@@ -112,7 +112,7 @@ def varscan_mpileup2snv(father_bam, mother_bam, child_bam, sample_list_file, reg
     
     child_id = sampleNameBam(child_bam)
     region_string = re.sub(r':|-', '_', region)
-    print(region_string)
+    # print(region_string)
 
     # if SNP-BED file is provided 
     if snp_bed != None:
@@ -125,11 +125,11 @@ def varscan_mpileup2snv(father_bam, mother_bam, child_bam, sample_list_file, reg
     f = open(output_file, 'w')
 
     mpileup_cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam}'
-    print(mpileup_cmd)
+    # print(mpileup_cmd)
     mpileup_execute = subprocess.Popen(shlex.split(mpileup_cmd), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
     varscan_cmd = f'{JAVA} -jar {VARSCAN} mpileup2snp --min-coverage 10 --mean-reads2 2  --min-var-freq 0.01 --p-value 0.99 --output-vcf --strand-filter 1 --vcf-sample-list {sample_list_file}' 
-    print(varscan_cmd)
+    # print(varscan_cmd)
     varscan_execute = subprocess.Popen(shlex.split(varscan_cmd), stdin=mpileup_execute.stdout, stdout=f, stderr=subprocess.DEVNULL)
     
     mpileup_execute.stdout.close()
