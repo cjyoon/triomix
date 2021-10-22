@@ -3,7 +3,7 @@
 suppressMessages(library(tidyverse))
 suppressMessages(library(optparse))
 suppressMessages(library(ggplot2))
-
+options(warn=-1)
 
 
 option_list = list(

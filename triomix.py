@@ -8,6 +8,7 @@ import json
 import multiprocessing as mp
 import pysam
 import cyvcf2
+import gzip
 
 def argument_parser():
     parser = argparse.ArgumentParser()
@@ -60,12 +61,19 @@ def split_regions(fasta_file, segment_length):
             chr_regions.append(f'{chrom}:{start:.0f}-{end:.0f}')
     return chr_regions
 
+def check_gzip_file(file_path):
+    """checks if the file is binary or not"""
+    cmd = f'file {file_path}'
+    execute = subprocess.check_output(shlex.split(cmd)).decode()
+    if re.search(r'gzip compressed', execute):
+        return True
+    else:
+        return False
+
 
 def write_sample_list(output_dir, father_bam, mother_bam, child_bam, prefix):
     """write the sample name list to be used for varscan vcf labeling
     order always father, mother, child"""
-    print(output_dir)
-
     os.system(f'mkdir -p {output_dir}/samplelist')
     output_file = os.path.join(output_dir, f'samplelist/{prefix}.samplelist')
     with open(output_file, 'w') as f:
@@ -82,16 +90,27 @@ def check_region_and_snp_bed(region, snp_bed):
     region_start = float(region_start)
     region_end = float(region_end)
     variant_count = 0 
-    with open(snp_bed, 'r') as f:
-        for line in f:
-            chrom, start, end, *args = line.strip().split('\t')
-            if chrom == region_chromosome:
-                if float(start) > region_start and float(start) < region_end:
-                    variant_count += 1
-                
-                if variant_count > 0:
-                    return True
+
+    is_snp_bed_gzip = check_gzip_file(snp_bed)
+
+    # determine gzip compression of snp bed file and use appropriate file handler
+    if is_snp_bed_gzip==True:
+        f = gzip.open(snp_bed, 'rt')
+    else:
+        f= open(snp_bed, 'r')
+
+
+    for line in f:
+        chrom, start, end, *args = line.strip().split('\t')
+        if chrom == region_chromosome:
+            if float(start) > region_start and float(start) < region_end:
+                variant_count += 1
+            
+            if variant_count > 0:
+                f.close()
+                return True
     # if no variant within the region is found then return False
+    f.close()
     return False
 
 
@@ -125,11 +144,9 @@ def varscan_mpileup2snv(father_bam, mother_bam, child_bam, sample_list_file, reg
     f = open(output_file, 'w')
 
     mpileup_cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam}'
-    # print(mpileup_cmd)
     mpileup_execute = subprocess.Popen(shlex.split(mpileup_cmd), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
     varscan_cmd = f'{JAVA} -jar {VARSCAN} mpileup2snp --min-coverage 10 --mean-reads2 2  --min-var-freq 0.01 --p-value 0.99 --output-vcf --strand-filter 1 --vcf-sample-list {sample_list_file}' 
-    # print(varscan_cmd)
     varscan_execute = subprocess.Popen(shlex.split(varscan_cmd), stdin=mpileup_execute.stdout, stdout=f, stderr=subprocess.DEVNULL)
     
     mpileup_execute.stdout.close()
@@ -145,7 +162,7 @@ def combine_vcf_files(split_vcfs, output_dir, child_bam):
     output_file = os.path.join(output_dir, f'{child_id}.varscan.snv.vcf.gz')
     split_vcfs_string =  ' '.join(split_vcfs)
     cmd = f'{BCFTOOLS} concat {split_vcfs_string} -o {output_file} -O z -a'
-    print(cmd)
+
     execute = subprocess.Popen(shlex.split(cmd))
     execute.wait()
 
@@ -173,8 +190,8 @@ def vt_decompose_normalize(vcf, output_dir):
     f = open(output_vcf, 'w')
     decompose_cmd = f'{VT} decompose -s  {vcf}'
     normalize_cmd = f'{VT} normalize -n -r {REFERENCE} - '
-    decompose_execute = subprocess.Popen(shlex.split(decompose_cmd), stdout=subprocess.PIPE)
-    normalize_execute = subprocess.Popen(shlex.split(normalize_cmd), stdin=decompose_execute.stdout, stdout=f)
+    decompose_execute = subprocess.Popen(shlex.split(decompose_cmd), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    normalize_execute = subprocess.Popen(shlex.split(normalize_cmd), stdin=decompose_execute.stdout, stdout=f, stderr=subprocess.DEVNULL)
     decompose_execute.stdout.close()
     output = normalize_execute.communicate()[0]
 
@@ -354,24 +371,29 @@ def main():
         arg_list.append((father_bam, mother_bam, child_bam, sample_list_file, region, tmp_region_dir, snp_bed))
 
     # run with multithreading
+    print('variant calling')
     with mp.Pool(thread) as pool:
         split_vcfs = pool.starmap(varscan_mpileup2snv, arg_list)
 
     # combine varscan result
+    print('combining variant calls')
     combined_vcf = combine_vcf_files(split_vcfs, output_dir, child_bam)
     
     # VT normalize variants
+    print('normalizing variant calls with vt')
     vt_vcf = vt_decompose_normalize(combined_vcf, output_dir)
 
     # remove non acgt results
+    print('removing loci with non ACGT bases')
     acgt_vcf = remove_non_acgt(vt_vcf, output_dir)
 
     # create count summary table
+    print('creating count table')
     count_table = get_parent_het_homref_child_count(child_bam, father_bam, mother_bam, acgt_vcf, prefix, output_dir, depth_threshold_child=10)
 
     # maximum likelihood estimate
+    print('running MLE')
     run_mle_rscript(count_table, output_dir, run_mode='optim')
-
 
 
 if __name__=='__main__':
