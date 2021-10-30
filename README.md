@@ -1,5 +1,5 @@
-# ChimeraSeq
-Identification of chimerism due to vanishing twin syndrome in whole-genome sequencing data of parent-offspring trio. 
+# Triomix
+Quantification of contamination or chimerism in whole-genome sequencing (WGS) data of parent-offspring trio. 
 
 
 # Requirements
@@ -18,59 +18,45 @@ R packages
 -tidyverse
 -optparse
 ```
-# One line command that execultes all using `Snakemake`
-Use the supplied Snakefile `varscan_parallel.smk` to create one VCF per family. 
-```bash
-# If using GRCh38
-snakemake -p -s chimeraseq.smk --config assembly=GRCh38
-# If using GRCh37
-snakemake -p -s chimeraseq.smk --config assembly=GRCh37
-```
-# Step by step guide
-## Step1: Preparing input VCF file using Varscan2
+# Usage
+`triomix.py` is the wrapper script that counts reference and variant read counts using `Varscan2`, normalizes the variant calls using `vt` and then runs maximum-likelihood estimate to calculate the mixture. The tool can also take list of known common SNPs as BED file input, which can reduce the total run time. We have prepared a list of SNP sites for GRCh37 and GRCh38 reference sequence from `gnmoad v2` and `gnomad v3` respectively. These BED files are found in `common_snp` folder. 
 
-If you prefer to use bash script to generate the VCF file, use the following commands. `$SAMPLE_LIST` file can be created by identifying `@RG SM:` tag for each bam file, and writing one line for each bam in the same order as used for `mpileup` input
 
 ```bash
-# Prepare $SAMPLE_LIST file for Varscan
-for bam in $FATHER_BAM $MOTHER_BAM $CHILD_BAM; do samtools view -H $bam  | grep '^@RG' | sed 's/.*SM://' | awk -F '\t' '{print $1}' >> $SAMPLE_LIST; done
+# Whole-genome mode:
+python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4
 
-# Varscan2 for SNVs
-samtools mpileup -B -Q 20 -q 20 -f $REFERENCE $FATHER_BAM $MOTHER_BAM $CHILD_BAM | java -jar VarScan.v2.3.9.jar mpileup2snp --min-coverage 10 --mean-reads2 2  --min-var-freq 0.01 --p-value 0.99 --output-vcf --strand-filter 1 --vcf-sample-list $SAMPLE_LIST > family.snv.vcf; bgzip family.snv.vcf; tabix -p vcf family.snv.vcf.gz
-
-# Varscan2 for indelx
-samtools mpileup -B -Q 20 -q 20 -f $REFERENCE $FATHER_BAM $MOTHER_BAM $CHILD_BAM | java -jar VarScan.v2.3.9.jar mpileup2indel --min-coverage 10 --mean-reads2 2  --min-var-freq 0.01 --p-value 0.99 --output-vcf --strand-filter 1 --vcf-sample-list $SAMPLE_LIST > family.indel.vcf; bgzip family.indel.vcf; tabix -p vcf family.indel.vcf.gz
-
-# combine indel and SNV vcf into a single vcf file
-bcftools concat family.snv.vcf.gz family.indel.vcf.gz -o family.vcf.gz -O z -a 
-
-# remove non ATGC bases from VCF file
-python remove_nonacgt.py family.vcf.gz 
-
-# Decompose and Normalize variants
-vt decompose -s family.acgt.vcf.gz | vt normalize -r $REFERENCE - > family.acgt.vtdcn.vcf; bgzip family.acgt.vtdcn.vcf; tabix -p vcf family.acgt.vtdcn.vcf.gz
-
-# annotate variants with dbSNP IDs
-bcftools annotate -a $DBSNP -c ID family.acgt.vtdcn.vcf.gz -O z -o family.acgt.vtdcn.dbsnpa.vcf.gz
+# Select snp mode:
+python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4 -s common_snp/grch38_common_snp.bed.gz
 
 ```
 
-# Step2: Identify informative loci from Varscan VCF, and prepare a table for MLE estimates
-From the VCF file, we can identify loci that is heterozygous in one of the parent and homozygous reference in the other parent. For each of these high-confidence loci, raw read depth and alternative read counts will be generated for downstream maximum likelihood estimate calculation. 
 
 ```bash
-$ OUTPUT_DIR=result
-$ PREFIX=family
-$ python get_candidate_loci_summary.py -f father_rg -m mother_rg -c child_rg -o $OUTPUT_DIR -p $PREFIX
+$ python triomix.py -h
+usage: triomix.py [-h] -f FATHER -m MOTHER -c CHILD -r REFERENCE [-s SNP]
+                  [-t THREAD] [-o OUTPUT_DIR] [-p PREFIX]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f FATHER, --father FATHER
+                        Father's bam file
+  -m MOTHER, --mother MOTHER
+                        Mother's bam file
+  -c CHILD, --child CHILD
+                        Child's bam file
+  -r REFERENCE, --reference REFERENCE
+                        Reference fasta file
+  -s SNP, --snp SNP     Optional list of SNP sites as a BED file
+  -t THREAD, --thread THREAD
+                        Multithread to utilize
+  -o OUTPUT_DIR, --output_dir OUTPUT_DIR
+                        Output directory
+  -p PREFIX, --prefix PREFIX
+                        prefix for the output file. If not specified, will use
+                        the SM tag from the child's bam
+
 ```
-results in `{OUTPUT_DIR}/{PREFIX}.counts`. This is file is the sole input for the last step. 
 
-
-# Step3: MLE estimate
-```bash
-$ Rscript chimera_likelihood.R -i $OUTPUT_DIR/$PREFIX.counts -o mle
-```
-Results in VAF histograms and MLE estimated results. 
-
-
-
+# Docker
+A Docker image is also available from Dockerhub `https://hub.docker.com/r/cjyoon/triomix/`. 
