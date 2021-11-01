@@ -38,6 +38,6 @@ RUN pip3 install pysam cyvcf2 snakemake numpy pandas matplotlib scipy
 
 ENV PATH="/usr/local/bin/:${PATH}"
 
-RUN cd tools && git clone https://github.com/cjyoon/chimeraseq.git
+RUN cd tools && git clone https://github.com/cjyoon/triomix.git
 # Clean up
 RUN cd tools && rm -f *.tar.bz2 && rm -f *.tar.gz && cd $HOME 

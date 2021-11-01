@@ -65,7 +65,7 @@ def check_gzip_file(file_path):
     """checks if the file is binary or not"""
     cmd = f'file {file_path}'
     execute = subprocess.check_output(shlex.split(cmd)).decode()
-    if re.search(r'gzip compressed', execute):
+    if re.search(r'gzip compressed|gzip compatible', execute):
         return True
     else:
         return False
