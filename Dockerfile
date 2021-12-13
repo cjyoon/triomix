@@ -1,3 +1,4 @@
+# Triomix v0.4 2021.12.12
 FROM ubuntu:focal
 ENV DEBIAN_FRONTEND noninteractive
 # Upgrade installed packages
@@ -24,20 +25,11 @@ RUN cd tools && wget https://github.com/samtools/samtools/releases/download/1.9/
     tar xvfj samtools-1.9.tar.bz2 && \
     cd samtools-1.9 &&  ./configure && make && make install && cp samtools /usr/local/bin/ && cd $HOME
 
-# Install VT 
-RUN cd tools && wget https://github.com/atks/vt/archive/0.5772.tar.gz && tar -zxvf 0.5772.tar.gz && cd vt-0.5772/ && make && cp vt /usr/local/bin/ && cd $HOME
-
-# Install bcftools
-RUN cd tools && wget https://github.com/samtools/bcftools/releases/download/1.9/bcftools-1.9.tar.bz2 && tar --bzip2 -xf bcftools-1.9.tar.bz2 && cd bcftools-1.9 && make && make install && cd $HOME
-
-
-
-
 # Install python3 packages
-RUN pip3 install pysam cyvcf2 snakemake numpy pandas matplotlib scipy 
+RUN pip3 install pysam snakemake numpy pandas scipy 
 
 ENV PATH="/usr/local/bin/:${PATH}"
 
-RUN cd tools && git clone https://github.com/cjyoon/triomix.git
+RUN cd tools && git clone https://github.com/cjyoon/triomix.git 
 # Clean up
 RUN cd tools && rm -f *.tar.bz2 && rm -f *.tar.gz && cd $HOME 
