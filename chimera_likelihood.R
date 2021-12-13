@@ -161,7 +161,7 @@ if(run_mode %in% c('optim', 'all')){
   
   summary_df = data.frame(input_file=input_file, mle=mle, se = parameter.se, upper_ci = upper_ci, lower_ci = lower_ci,
                           # mother_het_result=mother_het_result$par, father_het_result=father_het_result$par, 
-                          mother_homo_result= mother_homo_result$par, father_homo_result=father_homo_result$par, 
+                          mother_mix= mother_homo_result$par, father_mix=father_homo_result$par, 
                           mendelian_error_rate = mendelian_error_rate)  
   write_delim(summary_df, summary_path, delim='\t')
 }

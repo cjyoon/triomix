@@ -7,9 +7,7 @@ import argparse
 import json
 import multiprocessing as mp
 import pysam
-import cyvcf2
 import gzip
-import pandas as pd
 
 def argument_parser():
     parser = argparse.ArgumentParser()
@@ -62,6 +60,7 @@ def split_regions(fasta_file, segment_length):
             chr_regions.append(f'{chrom}:{start:.0f}-{end:.0f}')
     return chr_regions
 
+
 def check_gzip_file(file_path):
     """checks if the file is binary or not"""
     cmd = f'file {file_path}'
@@ -70,18 +69,6 @@ def check_gzip_file(file_path):
         return True
     else:
         return False
-
-
-def write_sample_list(output_dir, father_bam, mother_bam, child_bam, prefix):
-    """write the sample name list to be used for varscan vcf labeling
-    order always father, mother, child"""
-    os.system(f'mkdir -p {output_dir}/samplelist')
-    output_file = os.path.join(output_dir, f'samplelist/{prefix}.samplelist')
-    with open(output_file, 'w') as f:
-        for individual in [father_bam, mother_bam, child_bam]:
-            individual_id = sampleNameBam(individual)
-            f.write(individual_id + '\n')
-    return output_file
 
 
 def check_region_and_snp_bed(region, snp_bed):
@@ -175,28 +162,6 @@ def count_int(count):
     else:
         return count
 
-def identify_trio_index(father_id, mother_id, child_id, vcf):
-    """get the index positions of father mother child trio in the 
-    given vcf file. 
-    Infer this from the VCF header
-
-    """
-    vcf_handle = cyvcf2.VCF(vcf)
-
-    try:
-        # start indexing from 9 since first 9 is required vcf columns
-        father_index = [i for i, j in enumerate(
-            vcf_handle.samples) if j == father_id][0]
-        mother_index = [i for i, j in enumerate(
-            vcf_handle.samples) if j == mother_id][0]
-        child_index = [i for i, j in enumerate(
-            vcf_handle.samples) if j == child_id][0]
-        return father_index, mother_index, child_index
-
-    except IndexError:
-        print(f'Given {vcf} file does not contain the family members {father_id}, {mother_id}, {child_id}')
-        sys.exit(1)
-
 
 def natural_sort(l):
     def convert(text): return int(text) if text.isdigit() else text.lower()
@@ -206,55 +171,8 @@ def natural_sort(l):
     return sorted(l, key=alphanum_key)
 
 
-
-# def get_parent_het_homref_child_count(child_bam, father_bam, mother_bam , vcf, prefix, output_dir, depth_threshold_child):
-
-#     father_id = sampleNameBam(father_bam)
-#     mother_id = sampleNameBam(mother_bam)
-#     child_id = sampleNameBam(child_bam)
-
-#     father_index, mother_index, child_index = identify_trio_index(father_id, mother_id, child_id, vcf)
-#     count = 0 
-#     prev_chrom = ''
-#     chrom_list = get_chromosome_list(vcf)
-#     autosome_list = [i for i in chrom_list if not re.search(r'Y', i)] # autosome + chrX
-#     count_table_path = os.path.join(output_dir, f'{prefix}.counts')
-#     with open(count_table_path, 'w') as f:
-#         f.write('chrom\tpos\trefbase\taltbase\talt\tdepth\tvaf\thetero_parent\n')
-
-#         for variant in cyvcf2.VCF(vcf):
-#             if  variant.CHROM in autosome_list:
-#                 current_chrom = variant.CHROM
-#                 father_alt = count_int(variant.format('AD')[father_index][0])
-#                 mother_alt = count_int(variant.format('AD')[mother_index][0])
-#                 child_alt = count_int(variant.format('AD')[child_index][0])
-
-#                 father_ref = count_int(variant.format('RD')[father_index][0])
-#                 mother_ref = count_int(variant.format('RD')[mother_index][0])
-#                 child_ref = count_int(variant.format('RD')[child_index][0])
-
-#                 father_depth = int(father_ref) + int(father_alt)
-#                 mother_depth = int(mother_ref) + int(mother_alt)
-#                 child_depth = int(child_ref) + int(child_alt)
-
-#                 father_vaf = vaf(father_alt, father_depth)
-#                 mother_vaf = vaf(mother_alt, mother_depth)
-#                 child_vaf = vaf(child_alt, child_depth)
-#                 # if prev_chrom != current_chrom:
-#                 #     print(current_chrom)
-#                 prev_chrom = current_chrom
-#                 if father_depth > 20 and mother_depth > 20 and child_depth > depth_threshold_child:
-#                     if (father_vaf > 0.4 and father_vaf < 0.6 and mother_vaf< 0.01):
-#                         f.write(f'{variant.CHROM}\t{variant.POS}\t{variant.REF}\t{variant.ALT[0]}\t{child_alt}\t{child_depth}\t{child_vaf}\tF\n')
-
-#                     elif (mother_vaf > 0.4 and mother_vaf < 0.6 and father_vaf < 0.01):
-#                         f.write(f'{variant.CHROM}\t{variant.POS}\t{variant.REF}\t{variant.ALT[0]}\t{child_alt}\t{child_depth}\t{child_vaf}\tM\n')
-#                     else:
-#                         pass
-#     return count_table_path
-
 def parse_mpileup(mpileup_line):
-
+    """Parse mpileup result into counts string"""
     split_mpileup = mpileup_line.split('\t'); #print(split_mpileup)
     chrom = split_mpileup[0]
     pos = float(split_mpileup[1])
@@ -366,9 +284,6 @@ def get_parent_het_homref_child_count(mpileup_file):
 
     return output_counts_region
         
-        
-
-
 
 def run_mle_rscript(count_table, output_dir, run_mode):
     """run mode can be either optim for quickly running mle, and plot if you want to get mle plot for all possible estimation"""
@@ -385,26 +300,24 @@ def get_paths(path_config):
     """configures the paths to SAMTOOLS AND VARSCAN"""
     with open(path_config) as f:
         path = json.load(f)
-    return path['SAMTOOLS'], path['JAVA'], os.path.join(os.path.dirname(os.path.realpath(__file__)), path['VARSCAN']), path['BGZIP'], path['TABIX'], path['BCFTOOLS'], path['VT'], path['RSCRIPT'], path['GZIP']
+    return path['SAMTOOLS'],  path['RSCRIPT'], path['GZIP']
 
 
 def main():
-    global SAMTOOLS, JAVA, VARSCAN, BGZIP, TABIX, BCFTOOLS, VT, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP
+    global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP
 
     father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix = argument_parser()
     output_dir = os.path.abspath(output_dir)
-
-    # write sample name for varscan
-    sample_list_file = write_sample_list(output_dir, father_bam, mother_bam, child_bam, prefix)
 
     # configure paths to executables 
     script_dir = os.path.dirname(os.path.realpath(__file__)) 
     path_config = os.path.join(script_dir, 'path_config.json')
 
-    SAMTOOLS, JAVA, VARSCAN, BGZIP, TABIX, BCFTOOLS, VT, RSCRIPT, GZIP = get_paths(path_config)
+    SAMTOOLS, RSCRIPT, GZIP = get_paths(path_config)
 
     # path to the MLE Rscript 
-    MLE_RSCRIPT = os.path.join(script_dir, 'chimera_likelihood_0.4.R')
+    MLE_RSCRIPT = os.path.join(script_dir, 'chimera_likelihood.R')
+
 
     # split up regions
     segment_length = 50000000
