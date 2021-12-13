@@ -5,5 +5,6 @@
  "TABIX": "tabix", 
  "BCFTOOLS": "bcftools", 
  "VT": "vt", 
- "RSCRIPT": "Rscript"
+ "RSCRIPT": "Rscript", 
+ "GZIP": "gzip"
 }
