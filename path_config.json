@@ -1,9 +1,4 @@
-{"JAVA": "java", 
- "VARSCAN": "varscan/VarScan.v2.3.9.jar", 
- "SAMTOOLS": "samtools", 
- "BGZIP": "bgzip", 
- "TABIX": "tabix", 
- "BCFTOOLS": "bcftools", 
- "VT": "vt", 
- "RSCRIPT": "Rscript"
+{"SAMTOOLS": "samtools", 
+ "RSCRIPT": "Rscript", 
+ "GZIP": "gzip"
 }

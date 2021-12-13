@@ -7,7 +7,6 @@ import argparse
 import json
 import multiprocessing as mp
 import pysam
-import cyvcf2
 import gzip
 
 def argument_parser():
@@ -61,6 +60,7 @@ def split_regions(fasta_file, segment_length):
             chr_regions.append(f'{chrom}:{start:.0f}-{end:.0f}')
     return chr_regions
 
+
 def check_gzip_file(file_path):
     """checks if the file is binary or not"""
     cmd = f'file {file_path}'
@@ -69,18 +69,6 @@ def check_gzip_file(file_path):
         return True
     else:
         return False
-
-
-def write_sample_list(output_dir, father_bam, mother_bam, child_bam, prefix):
-    """write the sample name list to be used for varscan vcf labeling
-    order always father, mother, child"""
-    os.system(f'mkdir -p {output_dir}/samplelist')
-    output_file = os.path.join(output_dir, f'samplelist/{prefix}.samplelist')
-    with open(output_file, 'w') as f:
-        for individual in [father_bam, mother_bam, child_bam]:
-            individual_id = sampleNameBam(individual)
-            f.write(individual_id + '\n')
-    return output_file
 
 
 def check_region_and_snp_bed(region, snp_bed):
@@ -125,9 +113,8 @@ def filter_regions_with_snv(region_list, snp_bed):
 
     return keep_list
 
-
-def varscan_mpileup2snv(father_bam, mother_bam, child_bam, sample_list_file, region, output_dir, snp_bed):
-    """Run varscan mpileup2snv in a defined region of interest"""
+def mpileup(father_bam, mother_bam, child_bam, region, output_dir, snp_bed):
+    """Run mpileup in a defined region of interest"""
     
     child_id = sampleNameBam(child_bam)
     region_string = re.sub(r':|-', '_', region)
@@ -139,79 +126,26 @@ def varscan_mpileup2snv(father_bam, mother_bam, child_bam, sample_list_file, reg
     else:
         snp_bed_string = ''
 
-    output_file = os.path.join(output_dir, f'{child_id}_{region_string}.varscan.snv.vcf')
-    output_file_compressed = os.path.join(output_dir, f'{child_id}_{region_string}.varscan.snv.vcf.gz')
-    f = open(output_file, 'w')
+    # output_file = os.path.join(output_dir, f'{child_id}_{region_string}.mpileup')
+    output_file_compressed = os.path.join(output_dir, f'{child_id}_{region_string}.mpileup.gz')
+    print(output_file_compressed)
 
-    mpileup_cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam}'
-    mpileup_execute = subprocess.Popen(shlex.split(mpileup_cmd), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-
-    varscan_cmd = f'{JAVA} -jar {VARSCAN} mpileup2snp --min-coverage 10 --mean-reads2 2  --min-var-freq 0.01 --p-value 0.99 --output-vcf --strand-filter 1 --vcf-sample-list {sample_list_file}' 
-    varscan_execute = subprocess.Popen(shlex.split(varscan_cmd), stdin=mpileup_execute.stdout, stdout=f, stderr=subprocess.DEVNULL)
+    if not os.path.isfile(output_file_compressed):
+        cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam} | gzip -f > {output_file_compressed}'
+        os.system(cmd)
+    # gzip_cmd = f'{GZIP} -f ' 
+    # gzip_execute = subprocess.Popen(shlex.split(gzip_cmd), stdin=subprocess.PIPE, shell=True, stderr=subprocess.DEVNULL)
     
-    mpileup_execute.stdout.close()
-    output = varscan_execute.communicate()[0]
-    output_file_compressed = bgzip_tabix(output_file)
+    
+    # mpileup_cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam} '
+    # mpileup_execute = subprocess.Popen(shlex.split(mpileup_cmd), stdout=gzip_execute.stdin, stderr=subprocess.DEVNULL, shell=True)
+    
+    # mpileup_execute.wait()
+    # gzip_execute.stdin.close()
+    # gzip_execute.wait()
 
     return  output_file_compressed
 
-
-def combine_vcf_files(split_vcfs, output_dir, child_bam):
-    """combine vcf files from parallel jobs into one vcf file"""
-    child_id = sampleNameBam(child_bam)
-    output_file = os.path.join(output_dir, f'{child_id}.varscan.snv.vcf.gz')
-    split_vcfs_string =  ' '.join(split_vcfs)
-    cmd = f'{BCFTOOLS} concat {split_vcfs_string} -o {output_file} -O z -a'
-
-    execute = subprocess.Popen(shlex.split(cmd))
-    execute.wait()
-
-    return output_file
-
-
-def bgzip_tabix(vcf_file):
-    """compress and tabix vcf file"""
-    output_file_compressed = re.sub(r'.vcf$', '.vcf.gz', vcf_file)
-
-    bgzip_cmd =  f'{BGZIP} -f {vcf_file}'
-    bgzip_execute = subprocess.Popen(shlex.split(bgzip_cmd))
-    bgzip_execute.wait()
-
-    tabix_cmd = f'{TABIX} -p vcf {output_file_compressed}' 
-    tabix_execution = subprocess.Popen(shlex.split(tabix_cmd))
-    tabix_execution.wait()
-
-    return output_file_compressed
-
-
-def vt_decompose_normalize(vcf, output_dir):
-    """decompose and normalize using VT"""
-    output_vcf = os.path.join(output_dir, re.sub(r'.vcf.gz$', '.vtdcn.vcf', os.path.basename(vcf)))
-    f = open(output_vcf, 'w')
-    decompose_cmd = f'{VT} decompose -s  {vcf}'
-    normalize_cmd = f'{VT} normalize -n -r {REFERENCE} - '
-    decompose_execute = subprocess.Popen(shlex.split(decompose_cmd), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    normalize_execute = subprocess.Popen(shlex.split(normalize_cmd), stdin=decompose_execute.stdout, stdout=f, stderr=subprocess.DEVNULL)
-    decompose_execute.stdout.close()
-    output = normalize_execute.communicate()[0]
-
-    f.close()
-    output_vcf_compressed = bgzip_tabix(output_vcf)
-    return output_vcf_compressed
-
-def remove_non_acgt(vcf, output_dir):
-    """remove if ref contains a non acgt bases"""
-    output_vcf = os.path.join(output_dir, re.sub(r'.vcf.gz$', '.acgt.vcf', os.path.basename(vcf)))
-    vcf_handle = cyvcf2.VCF(vcf)
-    output_handle = cyvcf2.Writer(output_vcf, vcf_handle)
-    for variant in vcf_handle:
-        if re.search(r'[ATGC]+', variant.REF) and re.search(r'[ATGC]+', variant.ALT[0]):
-            output_handle.write_record(variant)
-
-    vcf_handle.close()
-    output_handle.close()
-
-    return bgzip_tabix(output_vcf)
 
 
 def vaf(alt_count, depth):
@@ -228,28 +162,6 @@ def count_int(count):
     else:
         return count
 
-def identify_trio_index(father_id, mother_id, child_id, vcf):
-    """get the index positions of father mother child trio in the 
-    given vcf file. 
-    Infer this from the VCF header
-
-    """
-    vcf_handle = cyvcf2.VCF(vcf)
-
-    try:
-        # start indexing from 9 since first 9 is required vcf columns
-        father_index = [i for i, j in enumerate(
-            vcf_handle.samples) if j == father_id][0]
-        mother_index = [i for i, j in enumerate(
-            vcf_handle.samples) if j == mother_id][0]
-        child_index = [i for i, j in enumerate(
-            vcf_handle.samples) if j == child_id][0]
-        return father_index, mother_index, child_index
-
-    except IndexError:
-        print(f'Given {vcf} file does not contain the family members {father_id}, {mother_id}, {child_id}')
-        sys.exit(1)
-
 
 def natural_sort(l):
     def convert(text): return int(text) if text.isdigit() else text.lower()
@@ -259,69 +171,125 @@ def natural_sort(l):
     return sorted(l, key=alphanum_key)
 
 
-def get_chromosome_list(vcf):
-    """get all chromosome list that appears in a vcf that is not an alternative contig"""
-    chromosomes = set()
-    vcf_handle = cyvcf2.VCF(vcf)
-    for i in vcf_handle.header_iter():
-        if i['HeaderType'] == 'CONTIG':
-            chromosomes.add(i['ID'])
+def parse_mpileup(mpileup_line):
+    """Parse mpileup result into counts string"""
+    split_mpileup = mpileup_line.split('\t'); #print(split_mpileup)
+    chrom = split_mpileup[0]
+    pos = float(split_mpileup[1])
+    ref = split_mpileup[2]
+
+    totalDepth = 0 
+    mismatches = 0
+    totalCharacters = 0
+    trio_alt_counts = dict({'father': None, 'mother': None, 'child': None})
+    trio_depth_counts = dict({'father': None, 'mother': None, 'child': None})
+    for individual, i in zip(['father', 'mother', 'child'], range(1, 4)):
+        # initialize mismatch dict for each bam
+        mismatch_dict = dict({'A': 0, 'C': 0, 'G': 0, 'T': 0, 'ins': 0, 'del': 0, 'depth': 0})
+
+        bases_index = 3*i + 1
+        depths_index = 3*i
+        depths = int(split_mpileup[depths_index])
+        totalDepth += depths
+        mpiledup = split_mpileup[bases_index].upper()
+        insertions = re.findall(r'\+[0-9]+[ACGTNacgtn]+', mpiledup)
+        deletions = re.findall(r'-[0-9]+[ACGTNacgtn]+', mpiledup)
+
+        mismatch_dict['ins'] = len(insertions)
+        mismatch_dict['del'] = len(deletions)
+
+        mpileupsnv = re.sub(r'\+[0-9]+[ACGTNacgtn]+|-[0-9]+[ACGTNacgtn]+', '', mpiledup)
+
+
+        mismatch_dict['A'] = mpileupsnv.count('A')
+        mismatch_dict['T'] = mpileupsnv.count('T')
+        mismatch_dict['G'] = mpileupsnv.count('G')
+        mismatch_dict['C'] = mpileupsnv.count('C')
+        trio_depth_counts.update({individual: depths})
+        trio_alt_counts.update({individual: mismatch_dict})
         
-    chromosomes_list = [chrom for chrom in chromosomes if re.search(r'^chr[0-9XY]+$|^[0-9XY]+$', chrom)]
+        
 
-    return natural_sort(list(chromosomes_list))
+    # now parse the dictionaries into a output string
+    father_depth = trio_depth_counts['father']
+    mother_depth = trio_depth_counts['mother']
+    father_alt_base = [k for k, v in trio_alt_counts['father'].items() if v > 0]
+
+    mother_alt_base = [k for k, v in trio_alt_counts['mother'].items() if v > 0]
+
+    n_alt_base_father = len(father_alt_base)
+    n_alt_base_mother = len(mother_alt_base)
+    if (n_alt_base_father==1 and n_alt_base_mother==0):
+        alt_base = ''.join(father_alt_base)
+        alt_parent = 'F'
+        alt_father = trio_alt_counts['father'][alt_base]
+        alt_mother = trio_alt_counts['mother'][alt_base]
+        child_alt = trio_alt_counts['child'][alt_base]
+        father_vaf = vaf(alt_father, father_depth)
+        mother_vaf = vaf(alt_mother, mother_depth)
+    elif (n_alt_base_father==0 and n_alt_base_mother==1):
+        alt_base = ''.join(mother_alt_base)
+        alt_parent = 'M'
+        alt_father = trio_alt_counts['father'][alt_base]
+        alt_mother = trio_alt_counts['mother'][alt_base]
+        child_alt = trio_alt_counts['child'][alt_base]
+        father_vaf = vaf(alt_father, father_depth)
+        mother_vaf = vaf(alt_mother, mother_depth)
+
+    elif (n_alt_base_father==0 and n_alt_base_mother==0):
+        alt_base='N' # parents homoref
+        alt_parent='NA'
+        alt_father = 0
+        alt_mother=0
+        # if parents are homoref/homoref, any non ref bases are errors
+        child_alt = sum(trio_alt_counts['child'].values())
+        father_vaf = vaf(alt_father, father_depth)
+        mother_vaf = vaf(alt_mother, mother_depth)
+
+    else:
+        father_vaf = -1 # arbitrary to filter out
+        mother_vaf = -1 # arbitrary to filter out
+
+        pass
+    snvcount = ''
+    if (father_vaf > 0.4 and father_vaf < 0.6 and mother_vaf ==0) or (mother_vaf > 0.4 and mother_vaf < 0.6 and father_vaf ==0):
+        if father_depth > 10 and mother_depth > 10:
+            child_depth = trio_depth_counts['child']
+            child_vaf = vaf(child_alt, child_depth)
+            snvcount = f'{chrom}\t{pos:.0f}\t{ref}\t{alt_base}\t{child_alt}\t{child_depth}\t{child_vaf}\t{alt_parent}\tNA\t{father_vaf}\t{mother_vaf}\n'
+    elif (father_vaf==0 and mother_vaf ==1) or (father_vaf==1 and mother_vaf==0):
+        if father_depth > 10 and mother_depth > 10:
+            child_depth = trio_depth_counts['child']
+            child_vaf = vaf(child_alt, child_depth)
+            snvcount = f'{chrom}\t{pos:.0f}\t{ref}\t{alt_base}\t{child_alt}\t{child_depth}\t{child_vaf}\tNA\t{alt_parent}\t{father_vaf}\t{mother_vaf}\n'
+    elif (father_vaf==0 and mother_vaf==0):
+        if father_depth > 10 and mother_depth > 10:
+            child_depth = trio_depth_counts['child']
+            child_vaf = vaf(child_alt, child_depth)
+            snvcount = f'{chrom}\t{pos:.0f}\t{ref}\t{alt_base}\t{child_alt}\t{child_depth}\t{child_vaf}\tNA\tNA\t{father_vaf}\t{mother_vaf}\n'
+    return snvcount
 
 
-def get_parent_het_homref_child_count(child_bam, father_bam, mother_bam , vcf, prefix, output_dir, depth_threshold_child):
+def get_parent_het_homref_child_count(mpileup_file):
+    """parse mpileup results into a table"""
+    output_counts_region = mpileup_file +'.counts'
+    with open(output_counts_region, 'w') as g:
+        g.write('chrom\tpos\trefbase\taltbase\talt\tdepth\tvaf\thetero_parent\thomoalt_parent\tfather_vaf\tmother_vaf\n')
+        with gzip.open(mpileup_file, 'rt') as f:
+            for line in f:
+                g.write(parse_mpileup(line))
 
-    father_id = sampleNameBam(father_bam)
-    mother_id = sampleNameBam(mother_bam)
-    child_id = sampleNameBam(child_bam)
+        f.close()
+    g.close()
 
-    father_index, mother_index, child_index = identify_trio_index(father_id, mother_id, child_id, vcf)
-    count = 0 
-    prev_chrom = ''
-    chrom_list = get_chromosome_list(vcf)
-    autosome_list = [i for i in chrom_list if not re.search(r'Y', i)] # autosome + chrX
-    count_table_path = os.path.join(output_dir, f'{prefix}.counts')
-    with open(count_table_path, 'w') as f:
-        f.write('chrom\tpos\trefbase\taltbase\talt\tdepth\tvaf\thetero_parent\n')
-
-        for variant in cyvcf2.VCF(vcf):
-            if  variant.CHROM in autosome_list:
-                current_chrom = variant.CHROM
-                father_alt = count_int(variant.format('AD')[father_index][0])
-                mother_alt = count_int(variant.format('AD')[mother_index][0])
-                child_alt = count_int(variant.format('AD')[child_index][0])
-
-                father_ref = count_int(variant.format('RD')[father_index][0])
-                mother_ref = count_int(variant.format('RD')[mother_index][0])
-                child_ref = count_int(variant.format('RD')[child_index][0])
-
-                father_depth = int(father_ref) + int(father_alt)
-                mother_depth = int(mother_ref) + int(mother_alt)
-                child_depth = int(child_ref) + int(child_alt)
-
-                father_vaf = vaf(father_alt, father_depth)
-                mother_vaf = vaf(mother_alt, mother_depth)
-                child_vaf = vaf(child_alt, child_depth)
-                # if prev_chrom != current_chrom:
-                #     print(current_chrom)
-                prev_chrom = current_chrom
-                if father_depth > 20 and mother_depth > 20 and child_depth > depth_threshold_child:
-                    if (father_vaf > 0.4 and father_vaf < 0.6 and mother_vaf< 0.01):
-                        f.write(f'{variant.CHROM}\t{variant.POS}\t{variant.REF}\t{variant.ALT[0]}\t{child_alt}\t{child_depth}\t{child_vaf}\tF\n')
-
-                    elif (mother_vaf > 0.4 and mother_vaf < 0.6 and father_vaf < 0.01):
-                        f.write(f'{variant.CHROM}\t{variant.POS}\t{variant.REF}\t{variant.ALT[0]}\t{child_alt}\t{child_depth}\t{child_vaf}\tM\n')
-                    else:
-                        pass
-    return count_table_path
+    return output_counts_region
+        
 
 def run_mle_rscript(count_table, output_dir, run_mode):
     """run mode can be either optim for quickly running mle, and plot if you want to get mle plot for all possible estimation"""
 
     cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir} -r {run_mode}'
+    print(cmd)
     execute = subprocess.Popen(shlex.split(cmd))
     execute.wait()
 
@@ -332,26 +300,24 @@ def get_paths(path_config):
     """configures the paths to SAMTOOLS AND VARSCAN"""
     with open(path_config) as f:
         path = json.load(f)
-    return path['SAMTOOLS'], path['JAVA'], os.path.join(os.path.dirname(os.path.realpath(__file__)), path['VARSCAN']), path['BGZIP'], path['TABIX'], path['BCFTOOLS'], path['VT'], path['RSCRIPT']
+    return path['SAMTOOLS'],  path['RSCRIPT'], path['GZIP']
 
 
 def main():
-    global SAMTOOLS, JAVA, VARSCAN, BGZIP, TABIX, BCFTOOLS, VT, REFERENCE, RSCRIPT, MLE_RSCRIPT
+    global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP
 
     father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix = argument_parser()
     output_dir = os.path.abspath(output_dir)
-
-    # write sample name for varscan
-    sample_list_file = write_sample_list(output_dir, father_bam, mother_bam, child_bam, prefix)
 
     # configure paths to executables 
     script_dir = os.path.dirname(os.path.realpath(__file__)) 
     path_config = os.path.join(script_dir, 'path_config.json')
 
-    SAMTOOLS, JAVA, VARSCAN, BGZIP, TABIX, BCFTOOLS, VT, RSCRIPT = get_paths(path_config)
+    SAMTOOLS, RSCRIPT, GZIP = get_paths(path_config)
 
     # path to the MLE Rscript 
     MLE_RSCRIPT = os.path.join(script_dir, 'chimera_likelihood.R')
+
 
     # split up regions
     segment_length = 50000000
@@ -363,37 +329,43 @@ def main():
     else:
         pass
 
-    # run varscan parallelly
+    # run mpileup parallelly
     tmp_region_dir = os.path.join(output_dir, prefix + '_tmp')
     os.system(f'mkdir -p {tmp_region_dir}')
     arg_list = []
     for region in region_splits:
-        arg_list.append((father_bam, mother_bam, child_bam, sample_list_file, region, tmp_region_dir, snp_bed))
+        arg_list.append((father_bam, mother_bam, child_bam, region, tmp_region_dir, snp_bed))
 
     # run with multithreading
     print('variant calling')
     with mp.Pool(thread) as pool:
-        split_vcfs = pool.starmap(varscan_mpileup2snv, arg_list)
+        mpileup_files = pool.starmap(mpileup, arg_list)
 
-    # combine varscan result
-    print('combining variant calls')
-    combined_vcf = combine_vcf_files(split_vcfs, output_dir, child_bam)
-    
-    # VT normalize variants
-    print('normalizing variant calls with vt')
-    vt_vcf = vt_decompose_normalize(combined_vcf, output_dir)
+    # go through mpileup files to parse information
+    print('parsing mpileup')
+    with mp.Pool(thread) as pool:
+        counts_split_files = pool.map(get_parent_het_homref_child_count, mpileup_files)
 
-    # remove non acgt results
-    print('removing loci with non ACGT bases')
-    acgt_vcf = remove_non_acgt(vt_vcf, output_dir)
 
-    # create count summary table
-    print('creating count table')
-    count_table = get_parent_het_homref_child_count(child_bam, father_bam, mother_bam, acgt_vcf, prefix, output_dir, depth_threshold_child=10)
+    print(counts_split_files)
 
-    # maximum likelihood estimate
+
+    # combine counts files
+    combined_counts = os.path.join(output_dir, f'{prefix}.counts')
+    count = 0
+    with open(combined_counts, 'w') as f:
+        for count_file in counts_split_files:
+            with open(count_file, 'r') as g:
+                if count != 0:
+                    next(g)
+                
+                for line in g:
+                    f.write(line)
+
+
+    # # maximum likelihood estimate
     print('running MLE')
-    run_mle_rscript(count_table, output_dir, run_mode='optim')
+    run_mle_rscript(combined_counts, output_dir, run_mode='optim')
 
 
 if __name__=='__main__':

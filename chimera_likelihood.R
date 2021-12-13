@@ -14,6 +14,8 @@ option_list = list(
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
 
+
+####### LIKELIHOOD FUNCTIONS
 likelihood<-function(alt, depth, ratio){
   p_00 = dbinom(alt, depth, prob=0)
   p_10 = dbinom(alt, depth, prob=ratio/2)
@@ -22,10 +24,55 @@ likelihood<-function(alt, depth, ratio){
   prob_total = (p_00 + p_10 + p_01 + p_11 + 1e-100)/4
   return(log10(prob_total))
 }
+likelihood_parentmix<-function(alt, depth, ratio){
+  # p_10 = dbinom(alt, depth, prob=ratio/2)
+  p_01 = dbinom(alt, depth, prob=0.5*(1-ratio))
+  prob_total = (p_01 + 1e-100)/2
+  return(log10(prob_total))
+}
+
+likelihood_homoalt_homoref<-function(alt, depth, ratio){
+  p = dbinom(alt, depth, prob=0.5*(1+ratio))
+  prob_total = (p + 1e-100)/4
+  return(log10(prob_total))
+}
+
+
+###### LOSS FUNCTIONS FOR optim
+loss_function = function(df, par){
+  if(par[1] > 0){
+    # probability is always a positive number
+    return(-sum(likelihood(df$alt, df$depth, par)))
+    }else{
+    # tell optim to stay away as probability can only be a positive number
+      return(10000000000000000)
+  }
+}
+
+loss_function_parent = function(df, par){
+  if(par[1] > 0){
+    # probability is always a positive number
+    return(-sum(likelihood_parentmix(df$alt, df$depth, par)))
+  }else{
+    # tell optim to stay away as probability can only be a positive number
+    return(10000000000000000)
+  }
+}
+
+loss_function_parent_homoalt_homoref = function(df, par){
+  if(par[1] > 0){
+    # probability is always a positive number
+    return(-sum(likelihood_homoalt_homoref(df$alt, df$depth, par)))
+  }else{
+    # tell optim to stay away as probability can only be a positive number
+    return(10000000000000000)
+  }
+}
+
+
 
 chimeria_mle_estimate<-function(alt_count, depth, title=NA, output_path=NA){
   
-  likelihood_space=rep(NA, 501)
   estimated_ratio_space = seq(0, 0.5, by=0.001)
   i=1
   result <- sapply(estimated_ratio_space, function(estimated_ratio){
@@ -71,30 +118,51 @@ run_mode = opt$run_mode
 df <- read_delim(input_file, delim='\t')
 df <- df %>% filter(!str_detect(chrom, pattern = 'chrX|X')) # remove chrX for calculating MLE estimates
 
+# filter out those regions where both parents are homoref/homoref
+df_homorefhomoref <- df %>% filter(is.na(hetero_parent) & is.na(homoalt_parent))
+#calculate error rate
+mendelian_error_rate = sum(df_homorefhomoref$alt)/ sum(df_homorefhomoref$depth) * 2 # multiplied by 2 since diploid genome
+# identify homo alt homo ref
+df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
+
+
+# filter out those regions where both parents are homoref/homoref
+df_homoref_het <- df %>% filter(!is.na(hetero_parent) & is.na(homoalt_parent))
+
+
 # Estimate MLE chimera ratio and confidence interval using optim function
 if(run_mode %in% c('optim', 'all')){
   
-  loss_function = function(df, par){
-    if(par[1] > 0){
-      # probability is always a positive number
-      return(-sum(likelihood(df$alt, df$depth, par)))
-    }else{
-      # tell optim to stay away as probability can only be a positive number
-      return(10000000000000000)
-    }
-  }
   print('Using optim function to estimate chimeric ratio')
-  result <- optim(par=0.25, d=df, fn=loss_function, method='Brent', lower=0, upper=0.5, hessian = T)
+  result <- optim(par=0.25, d=df_homoref_het, fn=loss_function, method='Brent', lower=0, upper=0.5, hessian = T)
   hessian <- result$hessian
   hessian.inv <- solve(hessian)
   parameter.se <- sqrt(diag(hessian.inv))
   
+
+  # mother_variants_df = df_homoref_het %>% filter(hetero_parent=='M')
+  # father_variants_df = df_homoref_het %>% filter(hetero_parent=='F')
+
+  # mother_het_result = optim(par=0.5, d=mother_variants_df, fn=loss_function_parent, method='Brent', lower=0, upper=1, hessian = T)
+  # father_het_result = optim(par=0.5, d=father_variants_df, fn=loss_function_parent, method='Brent', lower=0, upper=1, hessian = T)
+
+
+  # calcaulate using homo ref + homo_alt loci
+  df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
+  mother_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='M')
+  father_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='F')
+
+  mother_homo_result = optim(par=0.5, d=mother_homoalt, fn=loss_function_parent_homoalt_homoref, method='Brent', lower=0, upper=1, hessian = T)
+  father_homo_result = optim(par=0.5, d=father_homoalt, fn=loss_function_parent_homoalt_homoref, method='Brent', lower=0, upper=1, hessian = T)
   
   mle <- result$par
   upper_ci <- result$par - 1.96 * parameter.se
   lower_ci <- result$par + 1.96 * parameter.se
   
-  summary_df = data.frame(input_file=input_file, mle=mle, se = parameter.se, upper_ci = upper_ci, lower_ci = lower_ci)  
+  summary_df = data.frame(input_file=input_file, mle=mle, se = parameter.se, upper_ci = upper_ci, lower_ci = lower_ci,
+                          # mother_het_result=mother_het_result$par, father_het_result=father_het_result$par, 
+                          mother_mix= mother_homo_result$par, father_mix=father_homo_result$par, 
+                          mendelian_error_rate = mendelian_error_rate)  
   write_delim(summary_df, summary_path, delim='\t')
 }
 
@@ -102,7 +170,7 @@ if(run_mode %in% c('optim', 'all')){
 # Estimate MLE chimera ratio in full calculation mode
 if(run_mode %in% c('plot', 'all')){
   print('Plot mode, calculating log likelihood between 0~0.5 chimeric ratio space')
-  system.time(result <-chimeria_mle_estimate(df$alt, df$depth, title=input_file, output_path=output_path))
+  system.time(result <-chimeria_mle_estimate(df_homoref_het$alt, df_homoref_het$depth, title=input_file, output_path=output_path))
   
   # Plot histogram of VAFs
   output_histogram = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.hist.pdf')))
