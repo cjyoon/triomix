@@ -4,12 +4,8 @@ Quantification of contamination or chimerism in whole-genome sequencing (WGS) da
 
 # Requirements
 ```bash
-Varscan v2.3.9 (https://github.com/dkoboldt/varscan)
-
-vt (https://genome.sph.umich.edu/wiki/Vt)
 python 3.5 or later
 python packages
--cyvcf2
 -pysam
 
 R
