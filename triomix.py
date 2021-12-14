@@ -357,8 +357,8 @@ def main():
         for count_file in counts_split_files:
             with open(count_file, 'r') as g:
                 if count != 0:
-                    next(g)
-                
+                    next(g) # write header only in the first file, otherwise skip first row
+                count += 1
                 for line in g:
                     f.write(line)
 

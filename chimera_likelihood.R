@@ -115,7 +115,7 @@ input_file = opt$input_file
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.mle.pdf')))
 summary_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.summary.tsv')))
 run_mode = opt$run_mode
-df <- read_delim(input_file, delim='\t')
+df <- read_delim(input_file, delim='\t', na=c('', 'NA'), col_types=cols(pos=col_double(), alt=col_double(), depth=col_double(), vaf=col_double(), father_vaf=col_double(), mother_vaf=col_double()))
 df <- df %>% filter(!str_detect(chrom, pattern = 'chrX|X')) # remove chrX for calculating MLE estimates
 
 # filter out those regions where both parents are homoref/homoref
