@@ -39,11 +39,12 @@ likelihood_homoalt_homoref<-function(alt, depth, ratio){
   return(log10(prob_total))
 }
 likelihood_homoalt_homoref_combined<-function(alt, depth, homoalt_parent, parent_diff){
+  print(parent_diff)
   # parent_diff = (mother % - father %)
   if(homoalt_parent=='F'){
-    altfraction=(1-parent_diff)/2
+    altfraction=min(1, max(0, (1-parent_diff)/2))
   }else if(homoalt_parent=='M'){
-    altfraction=(1+parent_diff)/2
+    altfraction=min(1, max(0, (1+parent_diff)/2))
   }
   p = dbinom(alt, depth, prob=altfraction)
   prob_total = (p + 1e-100)
@@ -54,11 +55,11 @@ likelihood_homoalt_homoref_combined_vec = Vectorize(likelihood_homoalt_homoref_c
 
 likelihood_het_homoref_parent_combined<-function(alt, depth, hetalt_parent, parent_diff, mother_fraction){
   if(hetalt_parent=='F'){
-    p1 = dbinom(alt, depth, prob=(1-mother_fraction)/2)
-    p0 = dbinom(alt, depth, prob=(mother_fraction - parent_diff)/2)
+    p1 = dbinom(alt, depth, prob=max(0, (1-mother_fraction)/2))
+    p0 = dbinom(alt, depth, prob=max(0, (mother_fraction - parent_diff)/2))
   }else if(hetalt_parent=='M'){
-    p1 = dbinom(alt, depth, prob=(1-mother_fraction + parent_diff)/2)
-    p0 = dbinom(alt, depth, prob=(mother_fraction)/2)
+    p1 = dbinom(alt, depth, prob=max(0, (1-mother_fraction + parent_diff)/2))
+    p0 = dbinom(alt, depth, prob=max(0, (mother_fraction)/2))
   }
   prob_total = (p0 + p1 + 1e-100)/2
   return(log10(prob_total))
