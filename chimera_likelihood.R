@@ -4,7 +4,6 @@
 suppressMessages(library(tidyverse))
 suppressMessages(library(optparse))
 suppressMessages(library(ggplot2))
-library(optimParallel)
 options(warn=-1)
 
 
