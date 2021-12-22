@@ -1,4 +1,4 @@
-# Triomix v0.4 2021.12.12
+# Triomix v0.5 2021.12.21
 FROM ubuntu:focal
 ENV DEBIAN_FRONTEND noninteractive
 # Upgrade installed packages
