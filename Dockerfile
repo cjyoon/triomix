@@ -1,4 +1,4 @@
-# Triomix v0.5 2021.12.21
+# Triomix v1.0 2021.12.23
 FROM ubuntu:focal
 ENV DEBIAN_FRONTEND noninteractive
 # Upgrade installed packages
@@ -13,12 +13,12 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD5
 RUN R -e "install.packages('tidyverse', dependencies=TRUE)"
 RUN R -e "install.packages('BiocManager', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('optparse', dependencies=TRUE, repos='http://cran.rstudio.com/')"
-
+RUN R -e "install.packages('bbmle', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 
 # Install Htslib
 RUN mkdir tools && cd tools && wget https://github.com/samtools/htslib/releases/download/1.11/htslib-1.11.tar.bz2 && \
     tar xvfj htslib-1.11.tar.bz2 && \
-    cd htslib-1.11 &&  ./configure && make && make install && cd $HOME 
+    cd htslib-1.11 &&  ./configure && make && make install && cd $HOME
 
 # Install samtools
 RUN cd tools && wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2 && \
@@ -26,10 +26,10 @@ RUN cd tools && wget https://github.com/samtools/samtools/releases/download/1.9/
     cd samtools-1.9 &&  ./configure && make && make install && cp samtools /usr/local/bin/ && cd $HOME
 
 # Install python3 packages
-RUN pip3 install pysam snakemake numpy pandas scipy 
+RUN pip3 install pysam snakemake numpy pandas scipy
 
 ENV PATH="/usr/local/bin/:${PATH}"
 
-RUN cd tools && git clone https://github.com/cjyoon/triomix.git 
+RUN cd tools && git clone https://github.com/cjyoon/triomix.git
 # Clean up
-RUN cd tools && rm -f *.tar.bz2 && rm -f *.tar.gz && cd $HOME 
+RUN cd tools && rm -f *.tar.bz2 && rm -f *.tar.gz && cd $HOME

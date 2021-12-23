@@ -285,10 +285,10 @@ def get_parent_het_homref_child_count(mpileup_file):
     return output_counts_region
         
 
-def run_mle_rscript(count_table, output_dir, run_mode):
-    """run mode can be either optim for quickly running mle, and plot if you want to get mle plot for all possible estimation"""
+def run_mle_rscript(count_table, output_dir):
+    """run mle script"""
 
-    cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir} -r {run_mode}'
+    cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir}'
     print(cmd)
     execute = subprocess.Popen(shlex.split(cmd))
     execute.wait()
@@ -316,7 +316,7 @@ def main():
     SAMTOOLS, RSCRIPT, GZIP = get_paths(path_config)
 
     # path to the MLE Rscript 
-    MLE_RSCRIPT = os.path.join(script_dir, 'chimera_likelihood.R')
+    MLE_RSCRIPT = os.path.join(script_dir, 'mle.R')
 
 
     # split up regions
@@ -365,7 +365,7 @@ def main():
 
     # # maximum likelihood estimate
     print('running MLE')
-    run_mle_rscript(combined_counts, output_dir, run_mode='optim')
+    run_mle_rscript(combined_counts, output_dir)
 
 
 if __name__=='__main__':
