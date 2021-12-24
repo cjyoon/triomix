@@ -5,15 +5,7 @@ TABIX: tabix
 BCFTOOLS: bcftools
 VT:  vt
 
-# used in chimeraseq.smk
-JAVA: /home/users/cjyoon/anaconda3/bin/java
-VARSCAN: /home/users/cjyoon/tools/VarScan.v2.3.9.jar
-
-
 # REFERENCE and DBSNP
 GRCh38_REFERENCE: /home/users/cjyoon/Projects/mosaic/reference/Homo_sapiens_assembly38.fasta
-GRCh38_DBSNP: /home/users/cjyoon/reference/GRCh38/00-common_all.chr.vcf.gz
 
 GRCh37_REFERENCE: /home/users/cjyoon/reference/GRCh37/human_g1k_v37.fasta
-GRCh37_DBSNP: /home/users/cjyoon/reference/GRCh37/00-common_all.vcf.gz
-
