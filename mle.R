@@ -137,7 +137,10 @@ family_mix_nll<-function(df, k, x, z){
 if(opt$output_dir=='.' || is.na(opt$output_dir)){
   opt$output_dir = getwd() 
 }
-
+# create output directory if it doesn't exist
+if(!dir.exists(opt$output_dir)){
+  system(paste0('mkdir -p ', opt$output_dir))
+}
 # argument parsing
 input_file = opt$input_file
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.mle.pdf')))
