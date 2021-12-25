@@ -68,6 +68,16 @@ parent_diff_nll <-function(df, par){
   }
 }
 
+parent_diff_nll_single <-function(df, par){
+  if(par[1] >= 0| par[1] <=1){
+    parent_nll_result = -sum(likelihood_parent_homohomo_vec(df$alt, df$depth, df$homoalt_parent, par))
+    return(parent_nll_result)
+  }else{
+    # tell optim to stay away as probability can only be a positive number
+    return(10000000000000000)
+  }
+}
+
 ###############################################################################
 # offspring, sibling, father, mother mix
 likelihood_family_mix_father_altsnp<-function(alt, depth, k, x, z){
@@ -201,12 +211,12 @@ if(run_mode %in% c('all', 'joint')){
 }
 
 if(run_mode %in% c('all', 'single')){
-   mother_single_mle = mle2(parent_diff_nll, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=mother_homoalt), method='Brent')
-   father_single_mle = mle2(parent_diff_nll, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=father_homoalt), method='Brent')
+   mother_single_mle = mle2(parent_diff_nll_single, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=df_homoalthomoref), method='Brent')
+   father_single_mle = mle2(parent_diff_nll_single, start=list(par=0), lower=list(par=-1), upper=list(par=0), data=list(df=df_homoalthomoref), method='Brent')
    sibling_single_mle = mle2(sibling_nll, start=list(par=0), lower=list(par=0), upper=list(par=0.5), data=list(df=df_homoref_het), method='Brent')
 
    mother_fraction_single = coef(mother_single_mle)[['par']]
-   father_fraction_single = coef(father_single_mle)[['par']]
+   father_fraction_single = -coef(father_single_mle)[['par']]
    sibling_fraction_single = coef(sibling_single_mle)[['par']]
 
    summary_df$sibling_mix_s = sibling_fraction_single
