@@ -2,6 +2,7 @@
 # 2019.08.07 cjyoon
 # 2021.12.19 cjyoon added/fixed parent mix
 # 2021.12.23 cjyoon joint analysis of offspring, sibling, mother, and father.
+# 2021.12.24 cjyoon --runmode argument added, both single and joint mode can be run
 suppressMessages(library(tidyverse))
 suppressMessages(library(optparse))
 suppressMessages(library(ggplot2))
@@ -11,7 +12,8 @@ options(warn=-1)
 
 option_list = list(
   make_option(c("-i","--input_file"), type="character", default=NULL, help="Input VAF sites at HET/HOMREF parental sites", metavar="character"),
-  make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character")
+  make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character"), 
+  make_option(c("-r","--runmode"), type="character", default='all', help='[Optional] runmode, choose from single, joint, or all', metavar='character')
 )
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
@@ -35,7 +37,7 @@ sibling_nll<-function(df, par){
   if(par>0){
     return(-sum(likelihood_sibling(df$alt, df$depth, par)))
   }else{
-    return(-10000000000)
+    return(10000000000000000)
   }
 }
 
@@ -145,7 +147,16 @@ if(!dir.exists(opt$output_dir)){
 input_file = opt$input_file
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.mle.pdf')))
 summary_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.summary.tsv')))
+run_mode = opt$runmode
 
+# sanity check for input file existence and validity of runmode 
+if(!(run_mode %in% c('all', 'single', 'joint'))){
+  stop('--runmode should be either all, single, or joint. Exiting...')
+}
+
+if(!file.exists(input_file)){
+  stop(paste0(input_file, ' is not found. Exiting...' ))
+}
 
 # read in count table
 df <- read_delim(input_file, delim='\t', na=c('', 'NA'), col_types=cols(chrom=col_character(), pos=col_double(), alt=col_double(), depth=col_double(), vaf=col_double(), father_vaf=col_double(), mother_vaf=col_double()))
@@ -171,20 +182,42 @@ df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent)
 mother_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='M')
 father_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='F')
 
-parent_diff_result = mle2(parent_diff_nll, start=list(par=0), lower=list(par=-1), upper=list(par=1), data=list(df=df_homoalthomoref), method='L-BFGS-B')
-parent_diff_value = coef(parent_diff_result)[['par']]
+summary_df = list(input_file = input_file)
 
-# using the differnce between (mother-father=parent_diff) use this as a constraint, then find values for mother(x) and sibling(z) 
-mother_sibling_mle = mle2(family_mix_nll, start=list(x=max(parent_diff_value, 0), z=0), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B')
+if(run_mode %in% c('all', 'joint')){
+  parent_diff_result = mle2(parent_diff_nll, start=list(par=0), lower=list(par=-1), upper=list(par=1), data=list(df=df_homoalthomoref), method='Brent')
+  parent_diff_value = coef(parent_diff_result)[['par']]
 
-mother_fraction = coef(mother_sibling_mle)[['x']]
-sibling_fraction = coef(mother_sibling_mle)[['z']]
-father_fraction = mother_fraction - parent_diff_value #(y=x-k)
+  # using the differnce between (mother-father=parent_diff) use this as a constraint, then find values for mother(x) and sibling(z) 
+  mother_sibling_mle = mle2(family_mix_nll, start=list(x=max(parent_diff_value, 0), z=0), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B')
+
+  mother_fraction = coef(mother_sibling_mle)[['x']]
+  sibling_fraction = coef(mother_sibling_mle)[['z']]
+  father_fraction = mother_fraction - parent_diff_value #(y=x-k)
+
+  summary_df$sibling_mix_j=sibling_fraction
+  summary_df$father_mix_j=father_fraction
+  summary_df$mother_mix_j=mother_fraction
+}
+
+if(run_mode %in% c('all', 'single')){
+   mother_single_mle = mle2(parent_diff_nll, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=mother_homoalt), method='Brent')
+   father_single_mle = mle2(parent_diff_nll, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=father_homoalt), method='Brent')
+   sibling_single_mle = mle2(sibling_nll, start=list(par=0), lower=list(par=0), upper=list(par=0.5), data=list(df=df_homoref_het), method='Brent')
+
+   mother_fraction_single = coef(mother_single_mle)[['par']]
+   father_fraction_single = coef(father_single_mle)[['par']]
+   sibling_fraction_single = coef(sibling_single_mle)[['par']]
+
+   summary_df$sibling_mix_s = sibling_fraction_single
+   summary_df$father_mix_s = father_fraction_single
+   summary_df$mother_mix_s = mother_fraction_single
+
+}
 
   
-summary_df = data.frame(input_file=input_file, sibling_mix=sibling_fraction,  
-                        father_mix= father_fraction, mother_mix=mother_fraction, 
-                        mendelian_error_rate = mendelian_error_rate)  
+summary_df$mendelian_error_rate = mendelian_error_rate  
+summary_df = data.frame(summary_df)
 print(summary_df)
 print(summary_path)
 write_delim(summary_df, summary_path, delim='\t')

@@ -118,7 +118,6 @@ def mpileup(father_bam, mother_bam, child_bam, region, output_dir, snp_bed):
     
     child_id = sampleNameBam(child_bam)
     region_string = re.sub(r':|-', '_', region)
-    # print(region_string)
 
     # if SNP-BED file is provided 
     if snp_bed != None:
@@ -128,21 +127,11 @@ def mpileup(father_bam, mother_bam, child_bam, region, output_dir, snp_bed):
 
     # output_file = os.path.join(output_dir, f'{child_id}_{region_string}.mpileup')
     output_file_compressed = os.path.join(output_dir, f'{child_id}_{region_string}.mpileup.gz')
-    print(output_file_compressed)
+    # print(output_file_compressed)
 
     if not os.path.isfile(output_file_compressed):
         cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam} | gzip -f > {output_file_compressed}'
         os.system(cmd)
-    # gzip_cmd = f'{GZIP} -f ' 
-    # gzip_execute = subprocess.Popen(shlex.split(gzip_cmd), stdin=subprocess.PIPE, shell=True, stderr=subprocess.DEVNULL)
-    
-    
-    # mpileup_cmd = f'{SAMTOOLS} mpileup -B -Q 20 -q 20 {snp_bed_string}-r {region} -f {REFERENCE} {father_bam} {mother_bam} {child_bam} '
-    # mpileup_execute = subprocess.Popen(shlex.split(mpileup_cmd), stdout=gzip_execute.stdin, stderr=subprocess.DEVNULL, shell=True)
-    
-    # mpileup_execute.wait()
-    # gzip_execute.stdin.close()
-    # gzip_execute.wait()
 
     return  output_file_compressed
 
@@ -161,14 +150,6 @@ def count_int(count):
         return 0
     else:
         return count
-
-
-def natural_sort(l):
-    def convert(text): return int(text) if text.isdigit() else text.lower()
-
-    def alphanum_key(key): return [convert(c)
-                                   for c in re.split('([0-9]+)', key)]
-    return sorted(l, key=alphanum_key)
 
 
 def parse_mpileup(mpileup_line):
@@ -347,7 +328,7 @@ def main():
         counts_split_files = pool.map(get_parent_het_homref_child_count, mpileup_files)
 
 
-    print(counts_split_files)
+    # print(counts_split_files)
 
 
     # combine counts files
