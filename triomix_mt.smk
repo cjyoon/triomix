@@ -9,7 +9,7 @@ import sys
 configfile: 'family_config.yaml'
 configfile: srcdir('path_config.yaml')
 
-TRIOMIX = srcdir('triomix.py')
+
 
 def sampleNameBam(bamFile):
     """get @RG SM: information as sample name from BAM header"""
@@ -32,10 +32,10 @@ else:
 
 rule all:
     input:
-        expand('triomix_snp/{family}.counts.summary.tsv', family = config['family']),
+        expand('triomix_mt/{family}.mtdna.counts', family = config['family']),
         # expand('triomix_wgs/{family}.counts.summary.tsv', family = config['family'])  
 
-rule triomix_snv:
+rule triomix_mt:
     input: 
         father_bam = lambda wildcards: config['family'][wildcards.family]['father'],
         mother_bam = lambda wildcards: config['family'][wildcards.family]['mother'],
@@ -43,33 +43,14 @@ rule triomix_snv:
 
     params:
         family = '{family}',
-        output_dir = 'triomix_snp', 
+        output_dir = 'triomix_mt', 
         snp_bed = SNP_BED
 
     output: 
-        snvvcf = 'triomix_snp/{family}.counts.summary.tsv',     
+        snvvcf = 'triomix_mt/{family}.mtdna.counts',     
     threads: 1
     log:
-        "logs/{family}.triomix_snp.log"
+        "logs/{family}.triomix_mt.log"
     shell:
-        "(python {TRIOMIX} -f {input.father_bam} -m {input.mother_bam} -c {input.child_bam} -o {params.output_dir} -s {params.snp_bed} -r {REFERENCE} -t 6 -p {params.family} ) &> {log}"
-
-
-rule triomix_wgs:
-    input: 
-        father_bam = lambda wildcards: config['family'][wildcards.family]['father'],
-        mother_bam = lambda wildcards: config['family'][wildcards.family]['mother'],
-        child_bam = lambda wildcards: config['family'][wildcards.family]['child'], 
-
-    params:
-        family = '{family}',
-        output_dir = 'triomix_wgs', 
-
-    output: 
-        snvvcf = 'triomix_wgs/{family}.counts.summary.tsv',     
-    threads: 1
-    log:
-        "logs/{family}.triomix_wgs.log"
-    shell:
-        "(python {TRIOMIX} -f {input.father_bam} -m {input.mother_bam} -c {input.child_bam} -o {params.output_dir} -r {REFERENCE} -t {threads} -p {params.family} ) &> {log}"
+        "(python /home/users/cjyoon/scripts/chimeraseq/triomix_mt.py -f {input.father_bam} -m {input.mother_bam} -c {input.child_bam} -o {params.output_dir} --mtdna MT -r {REFERENCE} -t {threads} -p {params.family} ) &> {log}"
 
