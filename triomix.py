@@ -51,7 +51,7 @@ def split_regions(fasta_file, segment_length):
     """splits chromosome into segment lengths"""
     chr_regions = []
     for chrom, chr_length in identify_autosomal_chromosomes(fasta_file):
-        for i in range(0, int(chr_length/segment_length)):
+        for i in range(0, max(1, int(chr_length/segment_length))): # fixed here
             start = i*segment_length
             end = (i+1)*segment_length
 
