@@ -19,11 +19,12 @@ def argument_parser():
     parser.add_argument('-t', '--thread', required=False, default=1, type=int, help="Multithread to utilize")
     parser.add_argument('-o', '--output_dir', required=False, default=os.getcwd(), help='Output directory')
     parser.add_argument('-p', '--prefix', required=False, default=None, help="prefix for the output file. If not specified, will use the SM tag from the child's bam")
+    parser.add_argument('--runmode', required=False, default='all', choices=['single', 'joint', 'all'], help="Runmode for mle.R script")
     args = vars(parser.parse_args())
 
     if args['prefix'] == None:
         args['prefix'] = sampleNameBam(args['child'])
-    return args['father'], args['mother'], args['child'], args['reference'], args['snp'], args['thread'], args['output_dir'], args['prefix']
+    return args['father'], args['mother'], args['child'], args['reference'], args['snp'], args['thread'], args['output_dir'], args['prefix'], args['runmode']
 
 
 def sampleNameBam(bamFile):
@@ -266,10 +267,10 @@ def get_parent_het_homref_child_count(mpileup_file):
     return output_counts_region
         
 
-def run_mle_rscript(count_table, output_dir):
+def run_mle_rscript(count_table, output_dir, runmode):
     """run mle script"""
 
-    cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir}'
+    cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir} -r {runmode}'
     print(cmd)
     execute = subprocess.Popen(shlex.split(cmd))
     execute.wait()
@@ -287,7 +288,7 @@ def get_paths(path_config):
 def main():
     global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP
 
-    father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix = argument_parser()
+    father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix, runmode = argument_parser()
     output_dir = os.path.abspath(output_dir)
 
     # configure paths to executables 
@@ -346,7 +347,7 @@ def main():
 
     # # maximum likelihood estimate
     print('running MLE')
-    run_mle_rscript(combined_counts, output_dir)
+    run_mle_rscript(combined_counts, output_dir, runmode)
 
 
 if __name__=='__main__':

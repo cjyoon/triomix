@@ -176,7 +176,7 @@ df <- df %>% filter(!str_detect(chrom, pattern = 'chrX|X|chrY|Y')) # remove chrX
 
 # filter out those regions where both parents are homoref/homoref for Mendelian error rate calculation
 df_homorefhomoref <- df %>% filter(is.na(hetero_parent) & is.na(homoalt_parent))
-mendelian_error_rate = sum(df_homorefhomoref$alt)/ sum(df_homorefhomoref$depth) * 2 # multiplied by 2 since diploid genome
+mendelian_error_rate = sum(df_homorefhomoref$alt)/ sum(df_homorefhomoref$depth) 
 
 # identify homo alt homo ref
 df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
@@ -189,8 +189,8 @@ df_homoref_het <- df %>% filter(!is.na(hetero_parent) & is.na(homoalt_parent))
 # Estimate MLE chimera ratio and confidence interval using mle function
 # calcaulate using homo ref + homo_alt loci
 df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
-mother_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='M')
-father_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='F')
+mother_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='M') %>% filter(vaf > 0 & vaf < 1) # added filter  to remove deletions
+father_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% filter(vaf > 0 & vaf < 1) # added filter  to remove deletions
 
 summary_df = list(input_file = input_file)
 
