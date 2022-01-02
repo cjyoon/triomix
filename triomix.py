@@ -33,14 +33,14 @@ def sampleNameBam(bamFile):
     return name
 
 
-def identify_autosomal_chromosomes(fasta_file):
+def identify_chromosomes(fasta_file):
     """given fasta file, identify the chromosomes that are autosomal"""
     fai_file = fasta_file +  '.fai'
     if(os.path.exists(fai_file)):
         with open(fai_file, 'r') as f:
             for line in f:
                 chrom, length, *args = line.split('\t')
-                if re.search(r'^chr[0-9]+$|^[0-9]+$', chrom):
+                if re.search(r'^chr[0-9XY]+$|^[0-9XY]+$', chrom):
                     yield (chrom, float(length))
     else:
         print(f'There is no index file for {fasta_file}. Exiting...')
@@ -50,7 +50,7 @@ def identify_autosomal_chromosomes(fasta_file):
 def split_regions(fasta_file, segment_length):
     """splits chromosome into segment lengths"""
     chr_regions = []
-    for chrom, chr_length in identify_autosomal_chromosomes(fasta_file):
+    for chrom, chr_length in identify_chromosomes(fasta_file):
         for i in range(0, max(1, int(chr_length/segment_length))): # fixed here
             start = i*segment_length
             end = (i+1)*segment_length
