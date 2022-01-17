@@ -8,6 +8,7 @@ import json
 import multiprocessing as mp
 import pysam
 import gzip
+import random
 
 def argument_parser():
     parser = argparse.ArgumentParser()
@@ -18,8 +19,8 @@ def argument_parser():
     parser.add_argument('-s', '--snp', required=False, default=None, help="Optional list of SNP sites as a BED file")
     parser.add_argument('-t', '--thread', required=False, default=1, type=int, help="Multithread to utilize")
     parser.add_argument('-o', '--output_dir', required=False, default=os.getcwd(), help='Output directory')
-    parser.add_argument('-p', '--prefix', required=False, default=None, help="prefix for the output file. If not specified, will use the SM tag from the child's bam")
-    parser.add_argument('--runmode', required=False, default='all', choices=['single', 'joint', 'all'], help="Runmode for mle.R script")
+    parser.add_argument('-p', '--prefix', required=False, default=None, help="prefix for the output file. If not specified, will use the SM tag from the child bam's header")
+    parser.add_argument('--runmode', required=False, default='all', choices=['single', 'joint', 'all'], help="Runmode for mle.R script. 'single' assumes only 1 contamination source within family. 'joint' calculates the fraction of all family members jointly. 'all' runs both modes.")
     args = vars(parser.parse_args())
 
     if args['prefix'] == None:
@@ -153,7 +154,7 @@ def count_int(count):
         return count
 
 
-def parse_mpileup(mpileup_line):
+def parse_mpileup(mpileup_line, homoref_sampling_rate):
     """Parse mpileup result into counts string"""
     split_mpileup = mpileup_line.split('\t'); #print(split_mpileup)
     chrom = split_mpileup[0]
@@ -244,22 +245,33 @@ def parse_mpileup(mpileup_line):
             child_depth = trio_depth_counts['child']
             child_vaf = vaf(child_alt, child_depth)
             snvcount = f'{chrom}\t{pos:.0f}\t{ref}\t{alt_base}\t{child_alt}\t{child_depth}\t{child_vaf}\tNA\t{alt_parent}\t{father_vaf}\t{mother_vaf}\n'
-    elif (father_vaf==0 and mother_vaf==0):
+    elif (father_vaf==0 and mother_vaf==0) and random_sample_selection(homoref_sampling_rate):
         if father_depth > 10 and mother_depth > 10:
             child_depth = trio_depth_counts['child']
             child_vaf = vaf(child_alt, child_depth)
             snvcount = f'{chrom}\t{pos:.0f}\t{ref}\t{alt_base}\t{child_alt}\t{child_depth}\t{child_vaf}\tNA\tNA\t{father_vaf}\t{mother_vaf}\n'
     return snvcount
 
+def random_sample_selection(sampling_rate):
+    """random sampling function, avoid sampling if rate==1"""
+    if sampling_rate==1:
+        return True
+    else:
+        prob = random.uniform(0, 1)
+        if prob < sampling_rate:
+            return True
+        else:
+            return False
 
-def get_parent_het_homref_child_count(mpileup_file):
+
+def get_child_count(mpileup_file, homoref_sampling_rate):
     """parse mpileup results into a table"""
     output_counts_region = mpileup_file +'.counts'
     with open(output_counts_region, 'w') as g:
         g.write('chrom\tpos\trefbase\taltbase\talt\tdepth\tvaf\thetero_parent\thomoalt_parent\tfather_vaf\tmother_vaf\n')
         with gzip.open(mpileup_file, 'rt') as f:
             for line in f:
-                g.write(parse_mpileup(line))
+                g.write(parse_mpileup(line, homoref_sampling_rate))
 
         f.close()
     g.close()
@@ -277,6 +289,16 @@ def run_mle_rscript(count_table, output_dir, runmode):
 
     return 0 
 
+def run_plot_rscript(count_table, output_dir, reference, downsample=0.1):
+    """run mle script"""
+
+    cmd = f'{RSCRIPT} {PLOT_RSCRIPT} -i {count_table} -o {output_dir} -r {reference} -s {downsample}'
+    print(cmd)
+    execute = subprocess.Popen(shlex.split(cmd))
+    execute.wait()
+
+    return 0 
+
 
 def get_paths(path_config):
     """configures the paths to SAMTOOLS AND VARSCAN"""
@@ -286,7 +308,7 @@ def get_paths(path_config):
 
 
 def main():
-    global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP
+    global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP, PLOT_RSCRIPT
 
     father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix, runmode = argument_parser()
     output_dir = os.path.abspath(output_dir)
@@ -300,6 +322,8 @@ def main():
     # path to the MLE Rscript 
     MLE_RSCRIPT = os.path.join(script_dir, 'mle.R')
 
+    # path to the plot Rscript 
+    PLOT_RSCRIPT = os.path.join(script_dir, 'plot_variant.R')
 
     # split up regions
     segment_length = 50000000
@@ -325,8 +349,19 @@ def main():
 
     # go through mpileup files to parse information
     print('parsing mpileup')
+    # prepare arglist
+    arg_list = []
+    if not snp_bed is None:
+        homoref_sampling_rate = 1
+    else:
+        homoref_sampling_rate = 0.01
+
+    for mpileup_f in mpileup_files:
+        arg_list.append((mpileup_f, homoref_sampling_rate))
+
+
     with mp.Pool(thread) as pool:
-        counts_split_files = pool.map(get_parent_het_homref_child_count, mpileup_files)
+        counts_split_files = pool.starmap(get_child_count, arg_list)
 
 
     # print(counts_split_files)
@@ -345,9 +380,15 @@ def main():
                     f.write(line)
 
 
-    # # maximum likelihood estimate
+    # maximum likelihood estimate
     print('running MLE')
     run_mle_rscript(combined_counts, output_dir, runmode)
+
+    # plot variants
+    print('plotting variants')
+    run_plot_rscript(combined_counts, output_dir, REFERENCE, downsample=0.1)
+
+    print('done')
 
 
 if __name__=='__main__':

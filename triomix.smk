@@ -10,6 +10,7 @@ configfile: 'family_config.yaml'
 configfile: srcdir('path_config.yaml')
 
 TRIOMIX = srcdir('triomix.py')
+TRIOMIX_PLOT = srcdir('plot_variant.R')
 
 def sampleNameBam(bamFile):
     """get @RG SM: information as sample name from BAM header"""
@@ -33,6 +34,7 @@ else:
 rule all:
     input:
         expand('triomix_snp/{family}.counts.summary.tsv', family = config['family']),
+        expand('triomix_snp/{family}.counts.plot.pdf', family=config['family'])
         # expand('triomix_wgs/{family}.counts.summary.tsv', family = config['family'])  
 
 rule triomix_snv:
@@ -47,12 +49,31 @@ rule triomix_snv:
         snp_bed = SNP_BED
 
     output: 
-        snvvcf = 'triomix_snp/{family}.counts.summary.tsv',     
-    threads: 1
+        snvvcf = 'triomix_snp/{family}.counts.summary.tsv',  
+        counts = 'triomix_snp/{family}.counts'   
+    threads: 3
     log:
         "logs/{family}.triomix_snp.log"
     shell:
-        "(python {TRIOMIX} -f {input.father_bam} -m {input.mother_bam} -c {input.child_bam} -o {params.output_dir} -s {params.snp_bed} -r {REFERENCE} -t 6 -p {params.family} ) &> {log}"
+        "(python {TRIOMIX} -f {input.father_bam} -m {input.mother_bam} -c {input.child_bam} -o {params.output_dir} -s {params.snp_bed} -r {REFERENCE} -t {threads} -p {params.family} ) &> {log}"
+
+
+rule triomix_vafplot:
+    input: 
+        counts = 'triomix_snp/{family}.counts',
+        TRIOMIX_PLOT = TRIOMIX_PLOT
+    params:
+        family = '{family}',
+        output_dir = 'triomix_snp', 
+    output: 
+        plot = 'triomix_snp/{family}.counts.plot.pdf',     
+    threads: 1
+    log:
+        "logs/{family}.triomix.plot.log"
+    shell:
+        "(Rscript {input.TRIOMIX_PLOT} -i {input.counts} -o {params.output_dir} -r {REFERENCE} -s 0.1) &> {log}"
+
+
 
 
 rule triomix_wgs:

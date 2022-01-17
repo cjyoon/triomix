@@ -10,7 +10,9 @@ options(warn=-1)
 option_list = list(
   make_option(c("-i","--input_file"), type="character", default=NULL, help="Input counts file", metavar="character"),
   make_option(c("-r","--reference"), type="character", default=NULL, help="Reference FASTA file. Must be indexed", metavar="character"),
-  make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character")
+  make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character"),
+  make_option(c("-s","--subsample"), type="double", default=1, help="Subsampling ratio", metavar="character")
+
 )
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
@@ -19,8 +21,8 @@ opt = parse_args(opt_parser)
 counts_path = opt$input_file
 reference_path = opt$reference
 fai_path = paste0(reference_path, '.fai')
-
-
+subsample_ratio = opt$subsample
+print(subsample_ratio)
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.pdf')))
 
 
@@ -113,32 +115,26 @@ homoref_het_father = counts_df_numpos %>% filter(mother_vaf==0 & father_vaf > 0.
 homoref_het_mother = counts_df_numpos %>% filter(father_vaf==0 & mother_vaf > 0.4 & mother_vaf < 0.6)
 
 
-
 grid.newpage()
 pdf(output_path, width=20, height=10)
 pushViewport(viewport(x=0,  y=0, width=1, height=0.2, just=c('left', 'bottom')))
-grid.rect()
-plot_vaf(homoref_homo_alt_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=0.1, plot_label='homo-ref (mother) + homo-alt (father)')
+plot_vaf(homoref_het_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=subsample_ratio, plot_label='homo-ref (mother) + het (father)')
 popViewport(1)
 pushViewport(viewport(x=0,  y=0.20, width=1, height=0.2, just=c('left', 'bottom')))
-grid.rect()
-plot_vaf(homoref_homo_alt_mother, 'mother', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=0.1, plot_label='homo-ref (father) + homo-alt (mother)')
+plot_vaf(homoref_het_mother, 'mother', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=subsample_ratio, plot_label='homo-ref (father) + het (mother)')
 popViewport(1)
 
 pushViewport(viewport(x=0,  y=0.40, width=1, height=0.20, just=c('left', 'bottom')))
-grid.rect()
-plot_vaf(homoref_het_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=0.1, plot_label='homo-ref (mother) + het (father)')
+plot_vaf(homoref_homo_alt_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=subsample_ratio, plot_label='homo-ref (mother) + homo-alt (father)')
 popViewport(1)
 
 pushViewport(viewport(x=0,  y=0.60, width=1, height=0.2, just=c('left', 'bottom')))
-grid.rect()
-plot_vaf(homoref_het_mother, 'mother', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=0.1, plot_label='homo-ref (father) + het (mother)')
+plot_vaf(homoref_homo_alt_mother, 'mother', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=subsample_ratio, plot_label='homo-ref (father) + homo-alt (mother)')
 popViewport(1)
 
 
 pushViewport(viewport(x=0,  y=0.80, width=1, height=0.2, just=c('left', 'bottom')))
-grid.rect()
-plot_depth(counts_df_numpos, reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=0.1)
+plot_depth(bind_rows(homoref_het_father, homoref_het_mother, homoref_homo_alt_father, homoref_homo_alt_mother), reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=subsample_ratio)
 popViewport(1)
 dev.off()
 
