@@ -4,18 +4,17 @@ Quantification of contamination or chimerism in whole-genome sequencing (WGS) da
 
 # Requirements
 ```bash
-python 3.5 or later
-python packages
--pysam
+python v3.5 or later
+- pysam
 
-R
-R packages
--ggplot2
--tidyverse
--optparse
+R v3.6.0 or later (including 4.0 or later)
+- ggplot2
+- tidyverse
+- optparse
+- bbmle
 ```
 # Usage
-`triomix.py` is the wrapper script that counts reference and variant read counts using `Varscan2`, normalizes the variant calls using `vt` and then runs maximum-likelihood estimate to calculate the mixture. The tool can also take list of known common SNPs as BED file input, which can reduce the total run time. We have prepared a list of SNP sites for GRCh37 and GRCh38 reference sequence from `gnmoad v2` and `gnomad v3` respectively. These BED files are found in `common_snp` folder. 
+`triomix.py` is the wrapper script that counts reference and variant read counts using `samtools mpileup` command, and then runs maximum-likelihood estimate to calculate the mixture. The tool can take a list of known common SNPs as BED file input, which can reduce the total run time. We have prepared a list of SNP sites for GRCh37 and GRCh38 reference sequence from `gnmoad v2` and `gnomad v3` respectively. These BED files are found in `common_snp` folder. Multithreading option is also supported with `-t` argument. 
 
 
 ```bash
