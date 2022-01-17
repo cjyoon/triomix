@@ -61,7 +61,9 @@ optional arguments:
 
 # Output files
 `*.counts` : raw table that contains the VAF of the parents and readcounts of the child at SNP positions. 
+
 `*.counts.summary.tsv` : summary output of the `mle.R`. 
+
 `*.counts.plot.pdf` : Depth and VAF plots of variants by `plot_variants.R`. 
 
 ## SNP groups
