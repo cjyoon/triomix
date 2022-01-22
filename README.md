@@ -76,7 +76,7 @@ GroupA: homo-ref + homo-alt (or vice versa) -> het (child)
 GroupB: homo-ref + het (or vice versa) -> homo-ref or het (child)
 GroupC: homo-ref + homo-ref -> homo-ref (child)
 ```
-![SNP groups](images/snp_group.png "SNP groups")
+![SNP groups](images/snp_groups.png "SNP groups")
 
 ## columns of *.counts.summary.tsv
 ```
