@@ -13,7 +13,8 @@ options(warn=-1)
 option_list = list(
   make_option(c("-i","--input_file"), type="character", default=NULL, help="Input VAF sites at HET/HOMREF parental sites", metavar="character"),
   make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character"), 
-  make_option(c("-r","--runmode"), type="character", default='all', help='[Optional] runmode, choose from single, joint, or all', metavar='character')
+  make_option(c("-r","--runmode"), type="character", default='all', help='[Optional] runmode, choose from single, joint, or all', metavar='character'),
+  make_option(c("-u","--upd"), type="integer", default=1, help='[Optional] is set to 0 will not filter child variants with vaf=0 or 1 from a homo-ref + homo-alt parent loci. If set to 1, no filtering is applied', metavar='character')
 )
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
@@ -158,6 +159,7 @@ input_file = opt$input_file
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.mle.pdf')))
 summary_path = normalizePath(file.path(opt$output_dir, paste0(basename(input_file), '.summary.tsv')))
 run_mode = opt$runmode
+upd = opt$upd
 
 # sanity check for input file existence and validity of runmode 
 if(!(run_mode %in% c('all', 'single', 'joint'))){
@@ -189,8 +191,11 @@ df_homoref_het <- df %>% filter(!is.na(hetero_parent) & is.na(homoalt_parent))
 # Estimate MLE chimera ratio and confidence interval using mle function
 # calcaulate using homo ref + homo_alt loci
 df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
-mother_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='M') %>% filter(vaf > 0 & vaf < 1) # added filter  to remove deletions
-father_homoalt = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% filter(vaf > 0 & vaf < 1) # added filter  to remove deletions
+
+if(upd==0){
+  # if not interested in identifying upd, this filtering removes sites that are homozygous in the children (due to deletion)
+  df_homoalthomoref = df_homoalthomoref %>% filter(vaf > 0 & vaf < 1) # added filter  to remove deletions
+}
 
 summary_df = list(input_file = input_file)
 

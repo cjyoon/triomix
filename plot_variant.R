@@ -50,7 +50,7 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
   color = parent_color[[parent]]
   pushViewport(viewport(x=0.05, y=0.2, width=0.9, height=0.7, just=c('left', 'bottom')))
   grid.rect()
-  grid.text(plot_label, x = 0, y=1, just=c('left', 'bottom'))
+  grid.text(plot_label, x = 0, y=1.05, just=c('left', 'bottom'))
   for(i in 2:length(reference_fai_dict)){
     fai_length = reference_fai_dict[i]
     prev_length = reference_fai_dict[i-1]
@@ -63,7 +63,7 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
   count_df = count_df %>% sample_frac(subsample_ratio)
   
   grid.yaxis(at=c(0, 0.5, 1), label=c(0, 0.5, 1))
-  grid.text('VAF', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'))
+  grid.text('Child VAF', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'))
   grid.points(
     x=count_df$numeric_pos/total_genome_length, 
     y=count_df$vaf, 
@@ -75,7 +75,7 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
 plot_depth <- function(count_df, reference_fai_dict, total_genome_length, subsample_ratio=1){
   pushViewport(viewport(x=0.05, y=0.2, width=0.9, height=0.7, just=c('left', 'bottom')))
   grid.rect()
-  grid.text('Depth', x = 0, y=1, just=c('left', 'bottom'))
+  grid.text('Depth', x = 0, y=1.05, just=c('left', 'bottom'))
   for(i in 2:length(reference_fai_dict)){
     fai_length = reference_fai_dict[i]
     prev_length = reference_fai_dict[i-1]

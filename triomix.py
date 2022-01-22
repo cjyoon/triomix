@@ -12,20 +12,21 @@ import random
 
 def argument_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--father', required=True, help="Father's bam file")
-    parser.add_argument('-m', '--mother', required=True, help="Mother's bam file")
-    parser.add_argument('-c', '--child', required=True, help="Child's bam file")
-    parser.add_argument('-r', '--reference', required=True, help="Reference fasta file")
-    parser.add_argument('-s', '--snp', required=False, default=None, help="Optional list of SNP sites as a BED file")
-    parser.add_argument('-t', '--thread', required=False, default=1, type=int, help="Multithread to utilize")
-    parser.add_argument('-o', '--output_dir', required=False, default=os.getcwd(), help='Output directory')
+    parser.add_argument('-f', '--father', required=True, help="Father's BAM or CRAM file")
+    parser.add_argument('-m', '--mother', required=True, help="Mother's BAM or CRAM file")
+    parser.add_argument('-c', '--child', required=True, help="Child's BAM or CRAM file")
+    parser.add_argument('-r', '--reference', required=True, help="Reference FASTA file")
+    parser.add_argument('-s', '--snp', required=False, default=None, help="Optional list of SNP sites as a BED (or BED.gz) file")
+    parser.add_argument('-t', '--thread', required=False, default=1, type=int, help="Multithread to utilize. Default=1")
+    parser.add_argument('-o', '--output_dir', required=False, default=os.getcwd(), help='Output directory. Default=current working directory')
     parser.add_argument('-p', '--prefix', required=False, default=None, help="prefix for the output file. If not specified, will use the SM tag from the child bam's header")
-    parser.add_argument('--runmode', required=False, default='all', choices=['single', 'joint', 'all'], help="Runmode for mle.R script. 'single' assumes only 1 contamination source within family. 'joint' calculates the fraction of all family members jointly. 'all' runs both modes.")
+    parser.add_argument('--runmode', required=False, default='all', choices=['single', 'joint', 'all'], help="Runmode for mle.R script. 'single' assumes only 1 contamination source within family. 'joint' calculates the fraction of all family members jointly. 'all' runs both modes. Default=all")
+    parser.add_argument("-u", '--upd', default=1, choices=[0, 1], help="0: mle will filter out vaf=0 or 1 in sites where parental genotypes are homo-ref + homo-alt (GroupA SNPs) 1: mle will identify UPDs which appears as contamination. Default=1")
     args = vars(parser.parse_args())
 
     if args['prefix'] == None:
         args['prefix'] = sampleNameBam(args['child'])
-    return args['father'], args['mother'], args['child'], args['reference'], args['snp'], args['thread'], args['output_dir'], args['prefix'], args['runmode']
+    return args['father'], args['mother'], args['child'], args['reference'], args['snp'], args['thread'], args['output_dir'], args['prefix'], args['runmode'], args['upd']
 
 
 def sampleNameBam(bamFile):
@@ -279,10 +280,10 @@ def get_child_count(mpileup_file, homoref_sampling_rate):
     return output_counts_region
         
 
-def run_mle_rscript(count_table, output_dir, runmode):
+def run_mle_rscript(count_table, output_dir, runmode, upd):
     """run mle script"""
 
-    cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir} -r {runmode}'
+    cmd = f'{RSCRIPT} {MLE_RSCRIPT} -i {count_table} -o {output_dir} -r {runmode} -u {upd}'
     print(cmd)
     execute = subprocess.Popen(shlex.split(cmd))
     execute.wait()
@@ -299,6 +300,16 @@ def run_plot_rscript(count_table, output_dir, reference, downsample=0.1):
 
     return 0 
 
+def run_segmentation(count_table, output_dir, segment_length):
+    """run segmentation on homo-ref + homo-alt sites for each parental SNPs"""
+    cmd = f'{RSCRIPT} {SEGMENTATION_RSCRIPT} -i {count_table} -o {output_dir} -s {segment_length}'
+    print(cmd)
+    execute = subprocess.Popen(shlex.split(cmd))
+    execute.wait()
+
+    return 0 
+
+
 
 def get_paths(path_config):
     """configures the paths to SAMTOOLS AND VARSCAN"""
@@ -308,9 +319,9 @@ def get_paths(path_config):
 
 
 def main():
-    global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP, PLOT_RSCRIPT
+    global SAMTOOLS, REFERENCE, RSCRIPT, MLE_RSCRIPT, GZIP, PLOT_RSCRIPT, SEGMENTATION_RSCRIPT
 
-    father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix, runmode = argument_parser()
+    father_bam, mother_bam, child_bam, REFERENCE, snp_bed, thread, output_dir, prefix, runmode, upd = argument_parser()
     output_dir = os.path.abspath(output_dir)
 
     # configure paths to executables 
@@ -324,6 +335,9 @@ def main():
 
     # path to the plot Rscript 
     PLOT_RSCRIPT = os.path.join(script_dir, 'plot_variant.R')
+
+    # path to segmentation Rscript
+    SEGMENTATION_RSCRIPT = os.path.join(script_dir, 'upd_segmentation.R')
 
     # split up regions
     segment_length = 50000000
@@ -382,11 +396,16 @@ def main():
 
     # maximum likelihood estimate
     print('running MLE')
-    run_mle_rscript(combined_counts, output_dir, runmode)
+    run_mle_rscript(combined_counts, output_dir, runmode, upd)
 
     # plot variants
     print('plotting variants')
     run_plot_rscript(combined_counts, output_dir, REFERENCE, downsample=0.1)
+
+    # upd segmentation
+    print('upd segmentation')
+    run_segmentation(combined_counts, output_dir, segment_length)
+
 
     print('done')
 

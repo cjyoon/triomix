@@ -29,31 +29,32 @@ python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t
 
 ```bash
 $ python triomix.py -h
-usage: triomix.py [-h] -f FATHER -m MOTHER -c CHILD -r REFERENCE [-s SNP] [-t THREAD]
-                  [-o OUTPUT_DIR] [-p PREFIX] [--runmode {single,joint,all}]
+usage: triomix.py [-h] -f FATHER -m MOTHER -c CHILD -r REFERENCE [-s SNP] [-t THREAD] [-o OUTPUT_DIR] [-p PREFIX]
+                  [--runmode {single,joint,all}] [-u {0,1}]
 
 optional arguments:
   -h, --help            show this help message and exit
   -f FATHER, --father FATHER
-                        Father's bam file
+                        Father's BAM or CRAM file
   -m MOTHER, --mother MOTHER
-                        Mother's bam file
+                        Mother's BAM or CRAM file
   -c CHILD, --child CHILD
-                        Child's bam file
+                        Child's BAM or CRAM file
   -r REFERENCE, --reference REFERENCE
-                        Reference fasta file
-  -s SNP, --snp SNP     Optional list of SNP sites as a BED file
+                        Reference FASTA file
+  -s SNP, --snp SNP     Optional list of SNP sites as a BED (or BED.gz) file
   -t THREAD, --thread THREAD
-                        Multithread to utilize
+                        Multithread to utilize. Default=1
   -o OUTPUT_DIR, --output_dir OUTPUT_DIR
-                        Output directory
+                        Output directory. Default=current working directory
   -p PREFIX, --prefix PREFIX
-                        prefix for the output file. If not specified, will use the SM
-                        tag from the child bam's header
+                        prefix for the output file. If not specified, will use the SM tag from the child bam's header
   --runmode {single,joint,all}
-                        Runmode for mle.R script. 'single' assumes only 1 contamination
-                        source within family. 'joint' calculates the fraction of all
-                        family members jointly. 'all' runs both modes.
+                        Runmode for mle.R script. 'single' assumes only 1 contamination source within family. 'joint' calculates the fraction
+                        of all family members jointly. 'all' runs both modes. Default=all
+  -u {0,1}, --upd {0,1}
+                        0: mle will filter out vaf=0 or 1 in sites where parental genotypes are homo-ref + homo-alt (GroupA SNPs) 1: mle will
+                        identify UPDs which appears as contamination. Default=1
 
 ```
 `triomix.py` internally calls `mle.R` and `plot_variants.R` to estimate DNA mixture and to plot the VAFs of variants.
@@ -66,6 +67,8 @@ optional arguments:
 
 `*.counts.plot.pdf` : Depth and VAF plots of variants by `plot_variants.R`. 
 
+`*.counts.*.homoalt.segments` : Segmentation of SNP VAFS in the child from GroupA SNPs. UPD will results in large segments with mean VAF value of 0 or 1. 
+
 ## SNP groups
 Triomix classifies SNPs into three groups based on the parental genotypes. Each SNP types would have different patterns of VAFs in the offspring, which we used to infer the mixtures. 
 ```
@@ -73,7 +76,7 @@ GroupA: homo-ref + homo-alt (or vice versa) -> het (child)
 GroupB: homo-ref + het (or vice versa) -> homo-ref or het (child)
 GroupC: homo-ref + homo-ref -> homo-ref (child)
 ```
-
+![SNP gruops](/images/snp_grouop.png "SNP groups")
 
 ## columns of *.counts.summary.tsv
 ```
