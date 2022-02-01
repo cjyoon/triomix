@@ -3,6 +3,7 @@
 # 2021.12.19 cjyoon added/fixed parent mix
 # 2021.12.23 cjyoon joint analysis of offspring, sibling, mother, and father.
 # 2021.12.24 cjyoon --runmode argument added, both single and joint mode can be run
+# 2022.01.28 cjyoon grid search if convergence fails 
 suppressMessages(library(tidyverse))
 suppressMessages(library(optparse))
 suppressMessages(library(ggplot2))
@@ -128,7 +129,7 @@ likelihood_family_mix_mother_altsnp<-function(alt, depth, k, x, z){
 }
 
 family_mix_nll<-function(df, k, x, z){
-  if((x >= k & z >= 0) & (2*x+z <=1 + k)) {
+  if(x >= k & z >= 0 & (1-2*x+k-z >=0) & (z<=(1-2*x+k)/2)) {
     father_het_df = df %>% filter(hetero_parent=='F')
     mother_het_df = df %>% filter(hetero_parent=='M')
     
@@ -141,7 +142,8 @@ family_mix_nll<-function(df, k, x, z){
     return(10000000000000000)
   }
 }
-
+# vectorized function for grid search
+family_mix_nll_vect_par = Vectorize(family_mix_nll, vectorize.args = c('x', 'z'))
 
 
 ######################################
@@ -205,6 +207,19 @@ if(run_mode %in% c('all', 'joint')){
 
   # using the differnce between (mother-father=parent_diff) use this as a constraint, then find values for mother(x) and sibling(z) 
   mother_sibling_mle = mle2(family_mix_nll, start=list(x=max(parent_diff_value, 0), z=0), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B')
+  convergence_status = mother_sibling_mle@details$convergence
+  # check for convergence of mle
+  if(convergence_status!=0){
+    print('Failed initial convergence of mle. Grid searching to estimate new initial values for optimizing')
+    # use grid search to find a new starting point
+    ll_space = as_tibble(expand.grid(x=0:100/100, z=0:50/100)) %>% filter(1-2*x+parent_diff_value-z >=0 & z<=(1-2*x+parent_diff_value)/2) %>% mutate(ll = family_mix_nll_vect_par(df=df_homoref_het, k=parent_diff_value, x=x, z=z))
+    x_grid_estimate = as.double(ll_space[which(ll_space$ll == min(ll_space$ll)), 'x'])
+    z_grid_estimate = as.double(ll_space[which(ll_space$ll == min(ll_space$ll)), 'z'])
+    print(paste0('Initial guess for mother(x)=', round(x_grid_estimate, 4), ' sibling(z)=', round(z_grid_estimate, 4)))
+    mother_sibling_mle = mle2(family_mix_nll, start=list(x=x_grid_estimate, z=z_grid_estimate), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B', , control = list(maxit = 1e4, pgtol = 0, ndeps = c(1e-6, 1e-6), factr=0))
+    convergence_status = mother_sibling_mle@details$convergence
+  }
+
 
   mother_fraction = coef(mother_sibling_mle)[['x']]
   sibling_fraction = coef(mother_sibling_mle)[['z']]
@@ -213,6 +228,7 @@ if(run_mode %in% c('all', 'joint')){
   summary_df$sibling_mix_j=sibling_fraction
   summary_df$father_mix_j=father_fraction
   summary_df$mother_mix_j=mother_fraction
+  summary_df$convergence_j=convergence_status
 }
 
 if(run_mode %in% c('all', 'single')){
