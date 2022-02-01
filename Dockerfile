@@ -15,7 +15,6 @@ RUN R -e "BiocManager::install('DNAcopy')"
 RUN R -e "BiocManager::install('aroma.light')"
 RUN R -e "install.packages('PSCBS', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('tidyverse', dependencies=TRUE)"
-RUN R -e "install.packages('BiocManager', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('optparse', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('bbmle', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 
