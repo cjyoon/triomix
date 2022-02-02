@@ -51,13 +51,13 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
   pushViewport(viewport(x=0.05, y=0.2, width=0.9, height=0.7, just=c('left', 'bottom')))
   grid.rect()
   grid.text(plot_label, x = 0, y=1.05, just=c('left', 'bottom'))
-  for(i in 2:length(reference_fai_dict)){
+  for(i in 1:(length(reference_fai_dict)-1)){
     fai_length = reference_fai_dict[i]
-    prev_length = reference_fai_dict[i-1]
-    chrom_text_pos = (fai_length + prev_length)/2
+    next_length = reference_fai_dict[i+1]
+    chrom_text_pos = (fai_length + next_length)/2
     
     grid.lines(x = c(fai_length/total_genome_length, fai_length/total_genome_length), y=c(0, 1))
-    grid.text(label =names(reference_fai_dict)[i-1], x= chrom_text_pos/total_genome_length, y=-0.05, rot = 45, just=c('right', 'center'))
+    grid.text(label =names(reference_fai_dict)[i], x= chrom_text_pos/total_genome_length, y=-0.05, rot = 45, just=c('right', 'center'))
     
   }
   count_df = count_df %>% sample_frac(subsample_ratio)
@@ -76,13 +76,13 @@ plot_depth <- function(count_df, reference_fai_dict, total_genome_length, subsam
   pushViewport(viewport(x=0.05, y=0.2, width=0.9, height=0.7, just=c('left', 'bottom')))
   grid.rect()
   grid.text('Depth', x = 0, y=1.05, just=c('left', 'bottom'))
-  for(i in 2:length(reference_fai_dict)){
+  for(i in 1:(length(reference_fai_dict)-1)){
     fai_length = reference_fai_dict[i]
-    prev_length = reference_fai_dict[i-1]
-    chrom_text_pos = (fai_length + prev_length)/2
+    next_length = reference_fai_dict[i+1]
+    chrom_text_pos = (fai_length + next_length)/2
     
     grid.lines(x = c(fai_length/total_genome_length, fai_length/total_genome_length), y=c(0, 1))
-    grid.text(label =names(reference_fai_dict)[i-1], x= chrom_text_pos/total_genome_length, y=-0.05, rot = 45, just=c('right', 'center'))
+    grid.text(label =names(reference_fai_dict)[i], x= chrom_text_pos/total_genome_length, y=-0.05, rot = 45, just=c('right', 'center'))
   }
   count_df = count_df %>% sample_frac(subsample_ratio)
   mean_depth = mean(count_df$depth, na.rm=T)
@@ -97,7 +97,6 @@ plot_depth <- function(count_df, reference_fai_dict, total_genome_length, subsam
   
   popViewport(1)
 }
-
 
 
 
