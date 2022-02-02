@@ -33,6 +33,7 @@ reference_fai = reference_fai %>% filter(str_detect(name, '^chr[0-9XY]+$|^[0-9XY
 reference_fai = reference_fai %>% mutate(cumpos = cumsum(length), lag1=lag(cumpos), lag1=replace_na(lag1, 0))
 reference_fai_dict = setNames(reference_fai$lag1, reference_fai$name)
 total_genome_length = sum(reference_fai$length)
+total_genome_length = reference_fai %>% filter(str_detect(name, '^chr[0-9X]+$|^[0-9X]+$'))  %>% pull(length) %>% sum
 
 chrom_to_numeric <- function(chromosome, position, reference_fai_dict){
   # change chromosomal position into a single numeric value for plotting
