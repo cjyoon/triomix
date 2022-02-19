@@ -1,4 +1,4 @@
-# Triomix
+# TrioMix
 Quantification of contamination or chimerism in whole-genome sequencing (WGS) data of parent-offspring trio. 
 
 
@@ -24,6 +24,12 @@ python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t
 # Select snp mode:
 python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4 -s common_snp/grch38_common_snp.bed.gz
 
+```
+
+# Test Data
+A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. 
+```
+sh test.sh
 ```
 
 
@@ -87,7 +93,7 @@ mother_mix_j: Fraction of mother's DNA mixture obtained from the 'joint' calcula
 sibling_mix_s: Fraction of sibling's DNA mixture obtained from the 'single' calculation mode. Calculated with GroupB SNPs.
 father_mix_s: Fraction of father's DNA mixture obtained from the 'single' calculation mode. Calculated with GroupA SNPs.
 mother_mix_s: Fraction of mother's DNA mixture obtained from the 'single' calculation mode. Calculated with GroupA SNPs.
-mendelian_error_rate: Fraction of alternative reads where both parents are homo-ref genotype. Calculated with GroupC SNPs.
+denovo_error_rate: Fraction of alternative reads where both parents are homo-ref genotype. Calculated with GroupC SNPs.
 ```
 
 
