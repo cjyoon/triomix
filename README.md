@@ -91,7 +91,7 @@ denovo_error_rate: Fraction of alternative reads where both parents are homo-ref
 ```
 
 # Test Data
-A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. 
+A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. This should be run from the same directory where `triomix.py` and `simulate_familial_mixture.py` is located.
 ```
 sh test.sh
 ```
