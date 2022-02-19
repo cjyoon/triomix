@@ -81,9 +81,24 @@ def main():
     readcount_dict= dict()
     for indiv, count in read_counts:
         readcount_dict.update({indiv: count})
+ 
+    with open(os.path.join(output_dir, 'readcounts.txt'), 'w') as f:
+        f.write('indiv\ttotal_reads\n')
+        for indiv in readcount_dict.keys():
+            indiv_readcount = readcount_dict[indiv]
+            f.write(f'{indiv}\t{indiv_readcount}\n')
 
     adjusted_ratio = calculate_adjusted_sampling_ratio(readcount_dict, ratio)
     print(adjusted_ratio)
+
+    with open(os.path.join(output_dir, 'adjusted_ratio.txt'), 'w') as f:
+        f.write(f'father\t{adjusted_ratio[0]}\n')
+        f.write(f'mother\t{adjusted_ratio[1]}\n')
+        f.write(f'offspring\t{adjusted_ratio[2]}\n')
+        try:
+            f.write(f'sibling\t{adjusted_ratio[3]}\n')
+        except:
+            pass
 
 
     arg_list = []

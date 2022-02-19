@@ -180,7 +180,7 @@ df <- df %>% filter(!str_detect(chrom, pattern = 'chrX|X|chrY|Y')) # remove chrX
 
 # filter out those regions where both parents are homoref/homoref for Mendelian error rate calculation
 df_homorefhomoref <- df %>% filter(is.na(hetero_parent) & is.na(homoalt_parent))
-mendelian_error_rate = sum(df_homorefhomoref$alt)/ sum(df_homorefhomoref$depth) 
+denovo_error_rate = sum(df_homorefhomoref$alt)/ sum(df_homorefhomoref$depth) 
 
 # identify homo alt homo ref
 df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
@@ -247,7 +247,7 @@ if(run_mode %in% c('all', 'single')){
 }
 
   
-summary_df$mendelian_error_rate = mendelian_error_rate  
+summary_df$denovo_error_rate = denovo_error_rate  
 summary_df = data.frame(summary_df)
 print(summary_df)
 print(summary_path)

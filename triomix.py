@@ -404,7 +404,8 @@ def main():
 
     # upd segmentation
     print('upd segmentation')
-    run_segmentation(combined_counts, output_dir, segment_length)
+    upd_segment_length = 1000000 # 1mb
+    run_segmentation(combined_counts, output_dir, segment_length=upd_segment_length)
 
 
     print('done')
