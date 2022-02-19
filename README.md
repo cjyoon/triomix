@@ -26,12 +26,6 @@ python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t
 
 ```
 
-# Test Data
-A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. 
-```
-sh test.sh
-```
-
 
 ```bash
 $ python triomix.py -h
@@ -96,6 +90,13 @@ mother_mix_s: Fraction of mother's DNA mixture obtained from the 'single' calcul
 denovo_error_rate: Fraction of alternative reads where both parents are homo-ref genotype. Calculated with GroupC SNPs.
 ```
 
+# Test Data
+A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. 
+```
+sh test.sh
+```
+
 
 # Docker
 A Docker image is also available from Dockerhub `https://hub.docker.com/r/cjyoon/triomix/`. 
+
