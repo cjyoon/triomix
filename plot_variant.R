@@ -70,6 +70,8 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
     y=count_df$vaf, 
     gp=gpar(col=color, alpha=0.3), pch=16, size = unit(0.5, 'char')
   )
+  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='black',lwd=4, lty=2))
+
   popViewport(1)
 }
 
@@ -95,7 +97,8 @@ plot_depth <- function(count_df, reference_fai_dict, total_genome_length, subsam
   )
   grid.yaxis(at=seq(0, mean_depth*2, 10)/(mean_depth*2), label=seq(0, mean_depth*2, 10))
   grid.text('Depth', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'))
-  
+  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='gray',lwd=4, lty=2))
+
   popViewport(1)
 }
 
