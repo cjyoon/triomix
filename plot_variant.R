@@ -11,7 +11,8 @@ option_list = list(
   make_option(c("-i","--input_file"), type="character", default=NULL, help="Input counts file", metavar="character"),
   make_option(c("-r","--reference"), type="character", default=NULL, help="Reference FASTA file. Must be indexed", metavar="character"),
   make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character"),
-  make_option(c("-s","--subsample"), type="double", default=1, help="Subsampling ratio", metavar="character")
+  make_option(c("-s","--subsample"), type="double", default=1, help="Subsampling ratio", metavar="character"), 
+  make_option(c("-f","--output_format"), type="character", default='pdf', help="Output format. Options: pdf, png, jpg", metavar="character")
 
 )
 opt_parser = OptionParser(option_list = option_list)
@@ -23,7 +24,17 @@ reference_path = opt$reference
 fai_path = paste0(reference_path, '.fai')
 subsample_ratio = opt$subsample
 print(subsample_ratio)
-output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.pdf')))
+
+if(opt$output_format=='png'){
+  output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.png')))
+  png(output_path, units='in', res=300, width=20, height=10)
+}else if(opt$output_format=='jpg'){
+  output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.jpg')))
+  jpeg(output_path, units='in', res=300, width=20, height=10)
+}else{
+  output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.pdf')))
+  pdf(output_path, width=20, height=10)
+}
 
 
 
@@ -119,7 +130,6 @@ homoref_het_mother = counts_df_numpos %>% filter(father_vaf==0 & mother_vaf > 0.
 
 
 grid.newpage()
-pdf(output_path, width=20, height=10)
 pushViewport(viewport(x=0,  y=0, width=1, height=0.2, just=c('left', 'bottom')))
 plot_vaf(homoref_het_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, subsample_ratio=subsample_ratio, plot_label='homo-ref (mother) + het (father)')
 popViewport(1)
