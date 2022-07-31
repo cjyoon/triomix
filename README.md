@@ -1,6 +1,6 @@
 # TrioMix
 Quantification of contamination or chimerism in whole-genome sequencing (WGS) data of parent-offspring trio. 
-For details, please visit TrioMix's documentation: `https://triomix.readthedocs.io/en/latest/`
+For details, please visit [TrioMix's documentation](https://triomix.readthedocs.io/en/latest/)
 
 
 # Requirements
@@ -106,5 +106,5 @@ sh test.sh
 
 
 # Docker
-A Docker image is also available from Dockerhub `https://hub.docker.com/r/cjyoon/triomix/`. 
+A Docker image is also available from [Dockerhub](https://hub.docker.com/r/cjyoon/triomix/`). 
 
