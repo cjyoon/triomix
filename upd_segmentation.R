@@ -56,7 +56,7 @@ counts_df = counts_df %>% rename(chromosome=chrom, x=pos, y=vaf)
 df_homoalt_father = counts_df %>% filter(father_vaf==1 & mother_vaf==0) %>% select(chromosome, x, y)
 df_homoalt_mother = counts_df %>% filter(mother_vaf==1 & father_vaf==0) %>% select(chromosome, x, y)
 
-homorefalt_segments = list(father=data.frame(), mother=data.frame())
+homorefalt_segments = data.frame()
 for(chrom in unique(counts_df$chromosome)){
   
   df_homoalt = list(father=df_homoalt_father %>% filter(chromosome==chrom),
@@ -73,20 +73,17 @@ for(chrom in unique(counts_df$chromosome)){
     segmented = getSegments(fit, simplify = TRUE)
     
     segmented = segmented %>% select(-sampleName)
-    homorefalt_segments[[parent ]] = bind_rows(homorefalt_segments[[parent ]], segmented)
+    segmented$parent = parent
+    homorefalt_segments = bind_rows(homorefalt_segments, segmented)
   }
 }
-
-homorefalt_segments[['father']] = homorefalt_segments[['father']] %>% mutate(chromosome=convert_integer_to_chrom_vec(chromosome))
-homorefalt_segments[['mother']] = homorefalt_segments[['mother']] %>% mutate(chromosome=convert_integer_to_chrom_vec(chromosome))
+homorefalt_segments = homorefalt_segments %>% mutate(chromosome=convert_integer_to_chrom_vec(chromosome)) %>% arrange(desc(parent))
 
 
-output_path_father = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.father.homoalt.segments')))
-output_path_mother = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.mother.homoalt.segments')))
+output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.upd.segments.tsv')))
 
 
 
-write_delim(homorefalt_segments[['father']], output_path_father, delim='\t')
-write_delim(homorefalt_segments[['mother']], output_path_mother, delim='\t')
+write_delim(homorefalt_segments, output_path, delim='\t')
 
 
