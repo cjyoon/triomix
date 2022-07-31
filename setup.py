@@ -96,7 +96,7 @@ setup(
     # http://docs.python.org/distutils/setupscript.html#installing-additional-files
     #
     # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
-    data_files=[("common_snp", ["common_snp/grch38_common_snp.bed.gz", "common_snp/grch38_common_snp.bed.gz.tbi", '"common_snp/grch37_common_snp.bed.gz", '"common_snp/grch37_common_snp.bed.gz.tbi"])],  # Optional
+    # data_files=[("common_snp", ["common_snp/grch38_common_snp.bed.gz", "common_snp/grch38_common_snp.bed.gz.tbi", '"common_snp/grch37_common_snp.bed.gz", '"common_snp/grch37_common_snp.bed.gz.tbi"])],  # Optional
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # `pip` to create the appropriate form of executable for the target
