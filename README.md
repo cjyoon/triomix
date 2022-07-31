@@ -22,16 +22,16 @@ R v3.6.0 or later (including 4.0 or later)
 
 ```bash
 # Whole-genome mode:
-triomix -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4
+python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4
 
 # Select snp mode:
-triomix -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4 -s common_snp/grch38_common_snp.bed.gz
+python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t 4 -s common_snp/grch38_common_snp.bed.gz
 
 ```
 
 
 ```bash
-$ triomix -h
+$ python triomix.py -h
 usage: triomix [-h] [--version] -f FATHER -m MOTHER -c CHILD -r REFERENCE [-s SNP] [-t THREAD] [-o OUTPUT_DIR]
                [-p PREFIX] [--runmode {single,joint,all}] [-u {0,1}] [--parent] [-d DOWNSAMPLE]
 
@@ -99,7 +99,7 @@ denovo_error_rate: Fraction of alternative reads where both parents are homo-ref
 ```
 
 # Test Data
-A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. This should be run from the same directory where `triomix` and `simulate_familial_mixture.py` is located.
+A test run can be performed with `test.sh` which downloads a family data (M008) from the 1000 genomes trio data, simulates familial DNA contaminations, and runs TrioMix. This should be run from the same directory where `triomix.py` and `simulate_familial_mixture.py` is located.
 ```
 sh test.sh
 ```
