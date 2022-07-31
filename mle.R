@@ -23,6 +23,13 @@ opt = parse_args(opt_parser)
 
 ###############################################################################
 ##### vectorized likelihood calculations and negative-log-likelihood function 
+# avoid log(0) = -Inf
+check_float_min <-function(value){
+  if(value==0){
+    value = .Machine$double.xmin # to avoid falling in -Inf 
+  }
+  return(value)
+}
 
 ###############################################################################
 # simple mix of sibling only
@@ -32,6 +39,7 @@ likelihood_sibling<-function(alt, depth, ratio){
   p_01 = dbinom(alt, depth, prob= 0.5*(1-ratio))
   p_11 = dbinom(alt, depth, prob=0.5)
   prob_total = (p_00 + p_10 + p_01 + p_11 + 1e-100)/4
+  prob_total = check_float_min(prob_total)
   return(log10(prob_total))
 }
 
@@ -49,11 +57,13 @@ likelihood_parent_homohomo<-function(alt, depth, homo_parent, parent_diff){
   if(homo_parent=='F'){
     altfraction=min(1, max(0, (1-parent_diff)/2))
     p = dbinom(alt, depth, prob=altfraction)
+    p = check_float_min(p)
     prob_total = (p + 1e-100)
     return(log10(prob_total))
   }else{
     altfraction=min(1, max(0, (1+parent_diff)/2))
     p = dbinom(alt, depth, prob=altfraction)
+    p = check_float_min(p)
     prob_total = (p + 1e-100)
     return(log10(prob_total))
   }
@@ -100,7 +110,8 @@ likelihood_family_mix_father_altsnp<-function(alt, depth, k, x, z){
       p01 = dbinom(alt, depth, prob=alt_fraction_p01)
 
     p = p00 + p01 + p10 + p11
-  
+    p = check_float_min(p)
+
   prob_total = (p + 1e-100)
   return(log10(prob_total))
 }
@@ -123,7 +134,8 @@ likelihood_family_mix_mother_altsnp<-function(alt, depth, k, x, z){
   p01 = dbinom(alt, depth, prob=alt_fraction_p01)
   
   p = p00 + p01 + p10 + p11
-  
+  p = check_float_min(p)
+
   prob_total = (p + 1e-100)
   return(log10(prob_total))
 }
@@ -245,6 +257,11 @@ if(run_mode %in% c('all', 'single')){
    summary_df$mother_mix_s = mother_fraction_single
 
 }
+
+summary_df$N_A_father = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
+summary_df$N_A_mother = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
+summary_df$N_B_father = df_homoref_het %>% filter(hetero_parent=='F') %>% dim %>% `[[`(1)
+summary_df$N_B_mother = df_homoref_het %>% filter(hetero_parent=='M') %>% dim %>% `[[`(1)
 
   
 summary_df$denovo_error_rate = denovo_error_rate  

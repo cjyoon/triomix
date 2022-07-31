@@ -1,11 +1,14 @@
 # TrioMix
 Quantification of contamination or chimerism in whole-genome sequencing (WGS) data of parent-offspring trio. 
+For details, please visit [TrioMix's documentation](https://triomix.readthedocs.io/en/latest/)
 
 
 # Requirements
 ```bash
 python v3.5 or later
 - pysam
+- numpy
+- pandas
 
 R v3.6.0 or later (including 4.0 or later)
 - ggplot2
@@ -29,11 +32,12 @@ python triomix.py -f father.bam -m mother.bam -c child.bam -r reference.fasta -t
 
 ```bash
 $ python triomix.py -h
-usage: triomix.py [-h] -f FATHER -m MOTHER -c CHILD -r REFERENCE [-s SNP] [-t THREAD] [-o OUTPUT_DIR] [-p PREFIX]
-                  [--runmode {single,joint,all}] [-u {0,1}]
+usage: triomix [-h] [--version] -f FATHER -m MOTHER -c CHILD -r REFERENCE [-s SNP] [-t THREAD] [-o OUTPUT_DIR]
+               [-p PREFIX] [--runmode {single,joint,all}] [-u {0,1}] [--parent] [-d DOWNSAMPLE]
 
 optional arguments:
   -h, --help            show this help message and exit
+  --version             show program's version number and exit
   -f FATHER, --father FATHER
                         Father's BAM or CRAM file
   -m MOTHER, --mother MOTHER
@@ -48,16 +52,20 @@ optional arguments:
   -o OUTPUT_DIR, --output_dir OUTPUT_DIR
                         Output directory. Default=current working directory
   -p PREFIX, --prefix PREFIX
-                        prefix for the output file. If not specified, will use the SM tag from the child bam's header
+                        prefix for the output file. If not specified, will use the SM tag from the child bam's
+                        header
   --runmode {single,joint,all}
-                        Runmode for mle.R script. 'single' assumes only 1 contamination source within family. 'joint' calculates the fraction
-                        of all family members jointly. 'all' runs both modes. Default=all
+                        Runmode for mle.R script. 'single' assumes only 1 contamination source within family.
+                        'joint' calculates the fraction of all family members jointly. 'all' runs both modes.
+                        Default=all
   -u {0,1}, --upd {0,1}
-                        0: mle will filter out vaf=0 or 1 in sites where parental genotypes are homo-ref + homo-alt (GroupA SNPs) 1: mle will
-                        identify UPDs which appears as contamination. Default=1
-
+                        0: mle will filter out vaf=0 or 1 in sites where parental genotypes are homo-ref + homo-alt
+                        (GroupA SNPs) 1: mle will identify UPDs which appears as contamination. Default=1
+  --parent              Run detection of parental DNA contamination with child's DNA
+  -d DOWNSAMPLE, --downsample DOWNSAMPLE
+                        Downsampling for plotting.
 ```
-`triomix.py` internally calls `mle.R` and `plot_variants.R` to estimate DNA mixture and to plot the VAFs of variants.
+`triomix` internally calls `mle.R` and `plot_variants.R` to estimate DNA mixture and to plot the VAFs of variants.
 
 
 # Output files
@@ -98,5 +106,5 @@ sh test.sh
 
 
 # Docker
-A Docker image is also available from Dockerhub `https://hub.docker.com/r/cjyoon/triomix/`. 
+A Docker image is also available from [Dockerhub](https://hub.docker.com/r/cjyoon/triomix/`). 
 
