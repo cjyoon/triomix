@@ -508,7 +508,7 @@ def main():
 
     # path to the MLE Rscript for parent contamination by child
     MLE_PARENT_RSCRIPT = os.path.join(script_dir, 'mle_parent.R')
-    MLE_PARENT_CHILD_HOMOALT_RSCRIPT = os.path.join(script_dir, 'mle_parent_autosome.R')
+    MLE_PARENT_CHILD_HOMOALT_RSCRIPT = os.path.join(script_dir, 'mle_parent.R')
 
     # path to the plot Rscript 
     PLOT_RSCRIPT = os.path.join(script_dir, 'plot_variant.R')

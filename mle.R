@@ -206,6 +206,8 @@ df_homoref_het <- df %>% filter(!is.na(hetero_parent) & is.na(homoalt_parent))
 # calcaulate using homo ref + homo_alt loci
 df_homoalthomoref <- df %>% filter(is.na(hetero_parent) & !is.na(homoalt_parent))
 
+
+
 if(upd==0){
   # if not interested in identifying upd, this filtering removes sites that are homozygous in the children (due to deletion)
   df_homoalthomoref = df_homoalthomoref %>% filter(vaf > 0 & vaf < 1) # added filter  to remove deletions
@@ -258,16 +260,14 @@ if(run_mode %in% c('all', 'single')){
 
 }
 
-summary_df$N_A_father = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
-summary_df$N_A_mother = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
-summary_df$N_B_father = df_homoref_het %>% filter(hetero_parent=='F') %>% dim %>% `[[`(1)
-summary_df$N_B_mother = df_homoref_het %>% filter(hetero_parent=='M') %>% dim %>% `[[`(1)
-
+summary_df$groupA_father = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
+summary_df$groupA_mother = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
+summary_df$groupB_father = df_homoref_het %>% filter(hetero_parent=='F') %>% dim %>% `[[`(1)
+summary_df$groupB_mother = df_homoref_het %>% filter(hetero_parent=='M') %>% dim %>% `[[`(1)
   
 summary_df$denovo_error_rate = denovo_error_rate  
 summary_df = data.frame(summary_df)
-print(summary_df)
-print(summary_path)
+
 write_delim(summary_df, summary_path, delim='\t')
 
 

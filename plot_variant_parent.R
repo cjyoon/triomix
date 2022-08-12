@@ -1,6 +1,4 @@
-# plot VAF, depth etc for triomix
-# 2022.01.01 cjyoon draw whole genome wide vaf plot
-# 2022.03.23 cjyoon draw with larger fonts for legibility
+# plot VAF, depth etc for triomix for the contamination in the parents
 suppressMessages(library(tidyverse))
 suppressMessages(library(grid))
 suppressMessages(library(optparse))
@@ -26,9 +24,12 @@ counts_path = opt$input_file
 reference_path = opt$reference
 fai_path = paste0(reference_path, '.fai')
 downsample = opt$downsample
-width = 16 # inches
-height = 6 # inches
 autosome_only = opt$autosome
+
+width = 16 # inches
+height = 7.2 # inches
+
+
 
 counts_df = read_delim(counts_path, delim='\t', col_types = cols(chrom=col_character()))
 reference_fai = read_delim(fai_path, delim='\t', col_names = c('name', 'length', 'offset', 'linebases', 'linewidth', 'qualoffset'))
@@ -40,7 +41,8 @@ if(autosome_only==T){
   counts_df = counts_df %>% filter(str_detect(chrom, '^chr[0-9]+$|^[0-9]+$'))
 }else{
   reference_fai = reference_fai %>% filter(str_detect(name, '^chr[0-9X]+$|^[0-9X]+$'))
-    counts_df = counts_df %>% filter(str_detect(chrom, '^chr[0-9X]+$|^[0-9X]+$'))
+  counts_df = counts_df %>% filter(str_detect(chrom, '^chr[0-9X]+$|^[0-9X]+$'))
+  
 }
 total_genome_length = reference_fai %>% pull(length) %>% sum
 reference_fai_dict = setNames(reference_fai$lag1, reference_fai$name)
@@ -58,7 +60,7 @@ counts_df_numpos = counts_df %>% mutate(numeric_pos = chrom_to_numeric_vec(chrom
 
 
 
-plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, downsample=1, plot_label='', print_chrom_label=F){
+plot_parent_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, downsample=1, plot_label='', print_chrom_label=F){
   parent_color = c('father'='#F9939B', 'mother'='#5882F9')
   color = parent_color[[parent]]
   pushViewport(viewport(x=0.05, y=0.2, width=0.9, height=0.77, just=c('left', 'bottom')))
@@ -81,21 +83,30 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
     
   }
   
+  
+  parent_vaf_column = paste0(parent, '_vaf')
+  parent_depth_column = paste0(parent, '_depth')
+  parent_alt_column = paste0(parent, '_alt')
+  count_df = count_df %>% filter(get(parent_depth_column)-get(parent_alt_column) >1)
+  
+  count_df = count_df %>% filter(get(parent_vaf_column) <1)
   count_df = count_df %>% sample_frac(downsample)
+  
+  
   
   grid.yaxis(at=c(0, 0.5, 1), label=c(0, 0.5, 1), gp = gpar(fontsize = 14))
   # grid.text('VAF', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'), gp = gpar(fontsize = 24))
   grid.points(
     x=count_df$numeric_pos/total_genome_length, 
-    y=count_df$vaf, 
+    y=count_df[[parent_vaf_column]], 
     gp=gpar(col=color, alpha=0.3), pch=16, size = unit(0.5, 'char')
   )
-  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='black',lwd=2, lty=2))
+  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='black',lwd=1, lty=2))
   
   popViewport(1)
 }
 
-plot_depth <- function(count_df, reference_fai_dict, total_genome_length, downsample=1, print_chrom_label=F){
+plot_parent_depth <- function(count_df, parent, reference_fai_dict, total_genome_length, downsample=1, print_chrom_label=F){
   pushViewport(viewport(x=0.05, y=0.2, width=0.9, height=0.72, just=c('left', 'bottom')))
   grid.rect()
   # grid.text('Depth', x = 0, y=1.05, just=c('left', 'bottom'), gp = gpar(fontsize = 18, fontface = "bold"))
@@ -117,14 +128,16 @@ plot_depth <- function(count_df, reference_fai_dict, total_genome_length, downsa
   
   count_df = count_df %>% sample_frac(downsample)
   
+  parent_depth_column = paste0(parent, '_depth')
+  
   grid.points(
     x=count_df$numeric_pos/total_genome_length, 
-    y=count_df$depth/(mean_depth*2), 
+    y=count_df[[parent_depth_column]]/(mean_depth*2), 
     gp=gpar(alpha=0.3), pch=16,  size = unit(0.5, 'char')
   )
   grid.yaxis(at=seq(0, mean_depth*2, mean_depth)/(mean_depth*2), label=seq(0, mean_depth*2, mean_depth),  gp = gpar(fontsize = 14))
   # grid.text('Depth', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'), gp = gpar(fontsize = 24))
-  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='gray',lwd=2, lty=2))
+  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='gray',lwd=1, lty=2))
   
   popViewport(1)
 }
@@ -132,22 +145,15 @@ plot_depth <- function(count_df, reference_fai_dict, total_genome_length, downsa
 
 
 
-
-
 # select homo-ref(mother)/homo-alt(father)
-homoref_homo_alt_father = counts_df_numpos %>% filter(father_vaf==1 & mother_vaf==0)
+child_homoalt = counts_df_numpos %>% filter(vaf==1)
 
-# select homo-ref(father)/homo-alt(mother)
-homoref_homo_alt_mother = counts_df_numpos %>% filter(mother_vaf==1 & father_vaf==0)
-
-
-# select homo-ref(mother)/het(father)
-homoref_het_father = counts_df_numpos %>% filter(mother_vaf==0 & father_vaf > 0.4 & father_vaf < 0.6)
-
-# select homo-ref(father)/het(mother)
-homoref_het_mother = counts_df_numpos %>% filter(father_vaf==0 & mother_vaf > 0.4 & mother_vaf < 0.6)
+mother_contam_by_father = child_homoalt %>% filter(father_vaf==1)
+father_contam_by_mother = child_homoalt %>% filter(mother_vaf==1)
 
 
+
+grid.newpage()
 
 if(opt$output_format=='png'){
   output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.png')))
@@ -160,32 +166,36 @@ if(opt$output_format=='png'){
   pdf(output_path, width=width, height=height)
 }
 
-
-pushViewport(viewport(x=0.1, y=0, width=0.9, height=1, just=c('left', 'bottom')))
-pushViewport(viewport(x=0.0,  y=0, width=1, height=0.2, just=c('left', 'bottom')))
-plot_vaf(homoref_het_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (mother) + het (father)', print_chrom_label=T)
+pushViewport(viewport(x=0.1, y=0, width=0.9, height=0.95, just=c('left', 'bottom')))
+pushViewport(viewport(x=0.0,  y=0, width=1, height=1/6, just=c('left', 'bottom')))
+plot_parent_vaf(father_contam_by_mother, 'father', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (mother) + het (father)', print_chrom_label=T)
+popViewport(1)
+pushViewport(viewport(x=0,  y=1/6, width=1, height=1/6, just=c('left', 'bottom')))
+plot_parent_vaf(mother_contam_by_father, 'mother', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (mother) + het (father)', print_chrom_label=T)
 popViewport(1)
 
-pushViewport(viewport(x=0,  y=0.20, width=1, height=0.2, just=c('left', 'bottom')))
-plot_vaf(homoref_het_mother, 'mother', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (father) + het (mother)')
+pushViewport(viewport(x=0,  y=2/6, width=1, height=1/6, just=c('left', 'bottom')))
+plot_parent_vaf(child_homoalt, 'father', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (mother) + homo-alt (father)')
 popViewport(1)
 
-pushViewport(viewport(x=0,  y=0.40, width=1, height=0.20, just=c('left', 'bottom')))
-plot_vaf(homoref_homo_alt_father, 'father', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (mother) + homo-alt (father)')
-popViewport(1)
-
-pushViewport(viewport(x=0,  y=0.60, width=1, height=0.2, just=c('left', 'bottom')))
-plot_vaf(homoref_homo_alt_mother, 'mother', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (father) + homo-alt (mother)')
+pushViewport(viewport(x=0,  y=3/6, width=1, height=1/6, just=c('left', 'bottom')))
+plot_parent_vaf(child_homoalt, 'mother', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample, plot_label='homo-ref (father) + homo-alt (mother)')
 popViewport(1)
 
 
-pushViewport(viewport(x=0,  y=0.80, width=1, height=0.2, just=c('left', 'bottom')))
-plot_depth(bind_rows(homoref_het_father, homoref_het_mother, homoref_homo_alt_father, homoref_homo_alt_mother), reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample)
+pushViewport(viewport(x=0,  y=4/6, width=1, height=0.2, just=c('left', 'bottom')))
+plot_parent_depth(child_homoalt, 'father', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample)
 popViewport(1)
+
+pushViewport(viewport(x=0,  y=5/6, width=1, height=0.2, just=c('left', 'bottom')))
+plot_parent_depth(child_homoalt, 'mother', reference_fai_dict, total_genome_length=total_genome_length, downsample=downsample)
+popViewport(1)
+
+
 popViewport(1)
 pushViewport(viewport(x=0, y=0, width=0.1, height=1, just=c('left', 'bottom')))
-grid.lines(x=c(0.99, 0.99), y=c(0.02, 0.39), gp=gpar(lwd=2)); grid.text('GroupB VAF', x=0.45, y=0.22, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 18)); grid.text('paternal', x=0.85, y=0.10, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18)); grid.text('maternal', x=0.85, y=0.30, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18))
-grid.lines(x=c(0.99, 0.99), y=c(0.42, 0.79), gp=gpar(lwd=2)); grid.text('GroupA VAF', x=0.45, y=0.62, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 18)); grid.text('paternal', x=0.85, y=0.50, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18)); grid.text('maternal', x=0.85, y=0.70, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18))
-grid.lines(x=c(0.99, 0.99), y=c(0.82, 0.99), gp=gpar(lwd=2)); grid.text('depth', x=0.85, y=0.92, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 18))
-popViewport(1)
+grid.lines(x=c(0.99, 0.99), y=c(0.03, 2/6-0.03), gp=gpar(lwd=2)); grid.text('GroupE VAF', x=0.40, y=1/6, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 18)); grid.text('mother vaf=1', x=0.65, y=1/12, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 10));grid.text('father vaf=1', x=0.65, y=3/12, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 10));grid.text('father', x=0.85, y=1/12, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18)); grid.text('mother', x=0.85, y=3/12, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18))
+grid.lines(x=c(0.99, 0.99), y=c(2/6+0.01, 4/6-0.03), gp=gpar(lwd=2)); grid.text('GroupD VAF', x=0.40, y=3/6, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 18)); grid.text('father', x=0.85, y=5/12, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18)); grid.text('mother', x=0.85, y=7/12, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18))
+grid.lines(x=c(0.99, 0.99), y=c(4/6+0.01, 6/6-0.03), gp=gpar(lwd=2)); grid.text('Depth', x=0.40, y=5/6, just=c('center', 'center'), rot=90,  gp = gpar(fontsize = 18)); grid.text('father', x=0.85, y=9/12, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18)); grid.text('mother', x=0.85, y=11/12, just=c('center', 'center'), rot=90, gp=gpar(fontsize=18))
+
 dev.off()
