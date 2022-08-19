@@ -12,10 +12,11 @@ options(warn=-1)
 
 
 option_list = list(
-  make_option(c("-i","--input_file"), type="character", default=NULL, help="Input VAF sites at HET/HOMREF parental sites", metavar="character"),
+  make_option(c("-i","--input_file"), type="character", default=NULL, help="Input VAF sites at GroupA, B, C SNP loci", metavar="character"),
   make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character"), 
   make_option(c("-r","--runmode"), type="character", default='all', help='[Optional] runmode, choose from single, joint, or all', metavar='character'),
-  make_option(c("-u","--upd"), type="integer", default=1, help='[Optional] is set to 0 will not filter child variants with vaf=0 or 1 from a homo-ref + homo-alt parent loci. If set to 1, no filtering is applied', metavar='character')
+  make_option(c("-u","--upd"), type="integer", default=1, help='[Optional] is set to 0 will not filter child variants with vaf=0 or 1 from a homo-ref + homo-alt parent loci. If set to 1, no filtering is applied', metavar='character'),
+  make_option(c("-w","--wide"), type="integer", default=0, help='[Optional] is set to 1, produce final summary table in a wide format', metavar='character')
 )
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
@@ -239,10 +240,10 @@ if(run_mode %in% c('all', 'joint')){
   sibling_fraction = coef(mother_sibling_mle)[['z']]
   father_fraction = mother_fraction - parent_diff_value #(y=x-k)
 
-  summary_df$sibling_mix_j=sibling_fraction
-  summary_df$father_mix_j=father_fraction
-  summary_df$mother_mix_j=mother_fraction
-  summary_df$convergence_j=convergence_status
+  summary_df$child_contam_by_sibling_joint = sibling_fraction
+  summary_df$child_contam_by_father_joint = father_fraction
+  summary_df$child_contam_by_mother_joint =mother_fraction
+  summary_df$convergence_joint=convergence_status
 }
 
 if(run_mode %in% c('all', 'single')){
@@ -254,19 +255,23 @@ if(run_mode %in% c('all', 'single')){
    father_fraction_single = -coef(father_single_mle)[['par']]
    sibling_fraction_single = coef(sibling_single_mle)[['par']]
 
-   summary_df$sibling_mix_s = sibling_fraction_single
-   summary_df$father_mix_s = father_fraction_single
-   summary_df$mother_mix_s = mother_fraction_single
+   summary_df$child_contam_by_sibling = sibling_fraction_single
+   summary_df$child_contam_by_father = father_fraction_single
+   summary_df$child_contam_by_mother = mother_fraction_single
 
 }
 
 summary_df$groupA_father = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
-summary_df$groupA_mother = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
+summary_df$groupA_mother = df_homoalthomoref %>% filter(homoalt_parent=='M') %>% dim %>% `[[`(1)
 summary_df$groupB_father = df_homoref_het %>% filter(hetero_parent=='F') %>% dim %>% `[[`(1)
 summary_df$groupB_mother = df_homoref_het %>% filter(hetero_parent=='M') %>% dim %>% `[[`(1)
   
 summary_df$denovo_error_rate = denovo_error_rate  
 summary_df = data.frame(summary_df)
+
+if(opt$wide==0){
+  summary_df = summary_df %>% pivot_longer(names_to='type', values_to='value',-input_file) %>% select(-input_file)
+}
 
 write_delim(summary_df, summary_path, delim='\t')
 

@@ -6,7 +6,8 @@ options(warn=-1)
 
 option_list = list(
   make_option(c("-i","--input_parent_counts"), type="character", default=NULL, help="Readcounts at autosomal SNPs where child is homo-alt", metavar="character"),
-  make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character")
+  make_option(c("-o","--output_dir"), type="character", default="./", help="[Optional] Output directory (default: ./)", metavar="character"), 
+  make_option(c("-w","--wide"), type="integer", default=0, help='[Optional] is set to 1, produce final summary table in a wide format', metavar='character')
 )
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
@@ -131,7 +132,8 @@ v_father  = 2*father_by_mother_res -1
 # write output file
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(opt$input_parent_counts), '.summary.tsv')))
 
-output_df = data.frame( mother_contam_by_child = w_mother,
+output_df = data.frame( input_file = opt$input_parent_counts, 
+                        mother_contam_by_child = w_mother,
                         father_contam_by_child = w_father,
                         mother_contam_by_father = v_mother, 
                         father_contam_by_mother = v_father, 
@@ -140,6 +142,9 @@ output_df = data.frame( mother_contam_by_child = w_mother,
                         groupE_mother = dim(df_mother_by_father)[1], 
                         groupE_father = dim(df_father_by_mother)[1])
 
+if(opt$wide==0){
+  output_df = output_df %>% pivot_longer(names_to='type', values_to='value',-input_file) %>% select(-input_file)
+}
 
 write_delim(output_df, output_path, delim='\t')
 

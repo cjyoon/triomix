@@ -32,7 +32,7 @@ def count_reads(bamfile):
 
 def subsample_bam(bamfile, subsample_ratio, subsampled_bam, threads):
     """subsample bam that will be merged later"""
-    cmd = f'sambamba view -t {threads} -f bam -h -s {subsample_ratio} {bamfile} > {subsampled_bam}'
+    cmd = f'samtools view -@ {threads-1} --subsample {subsample_ratio} -hbo {subsampled_bam} {bamfile}'
     print(cmd)
     os.system(cmd)
 
@@ -73,11 +73,18 @@ def main():
 
         if sibling != None:
             with mp.Pool(4) as pool:
-                read_counts = zip(['father', 'mother', 'offspring', 'sibling'], pool.map(count_reads, [father, mother, offspring, sibling]))
+                family_members = ['father', 'mother', 'offspring', 'sibling']
+                family_bam = [father, mother, offspring, sibling]
+                read_counts = zip(family_members, pool.map(count_reads, [father, mother, offspring, sibling]))
+                output_files = [subsampled_father, subsampled_mother, subsampled_offspring, subsampled_sibling]
+
         else:
             with mp.Pool(3) as pool:
-                read_counts = zip(['father', 'mother', 'offspring'], pool.map(count_reads, [father, mother, offspring]))
-           
+                family_members = ['father', 'mother', 'offspring']
+                family_bam = [father, mother, offspring]
+                read_counts = zip(family_members, pool.map(count_reads, [father, mother, offspring]))
+                output_files = [subsampled_father, subsampled_mother, subsampled_offspring]
+
 
         readcount_dict= dict()
         for indiv, count in read_counts:
@@ -104,37 +111,27 @@ def main():
 
         arg_list = []
 
-        arg_list.append((father, adjusted_ratio[0], subsampled_father, threads))
-        arg_list.append((mother, adjusted_ratio[1], subsampled_mother, threads))
-        arg_list.append((offspring, adjusted_ratio[2], subsampled_offspring, threads))
-        if sibling !=None:
-            arg_list.append((sibling, adjusted_ratio[3], subsampled_sibling, threads))
+
+        for indiv, adj_ratio, subsampled_bam in zip(family_bam, adjusted_ratio, output_files):
+            if adj_ratio > 0: # samtools view -s cannot subsample 0 reads, unlike sambamba
+                arg_list.append((indiv, adj_ratio, subsampled_bam, threads))
+
 
         with mp.Pool(4) as pool:
-            pool.starmap(subsample_bam, arg_list)
+            subsampled_bam_list = pool.starmap(subsample_bam, arg_list)
 
+        print(subsampled_bam_list)
+        subsampled_bam_list_string = ' '.join(subsampled_bam_list)
         # merge
-        if sibling !=None:
-            merge_cmd = f'sambamba merge -t {threads} {merged_bam} {subsampled_father} {subsampled_mother} {subsampled_offspring} {subsampled_sibling}'
-        else:
-            merge_cmd = f'sambamba merge -t {threads} {merged_bam} {subsampled_father} {subsampled_mother} {subsampled_offspring}'
+
+        merge_cmd = f'samtools merge -@ {threads-1} -o {merged_bam} {subsampled_bam_list_string}'
 
         print(merge_cmd)
 
         os.system(merge_cmd)
 
-    # replace readgroup so that this bam can be treated as a single sample
-    merged_rg_bam = os.path.join(output_dir, f'familymix.rg.bam')
-
-    cmd = f'java -jar  ~/tools/picard.jar AddOrReplaceReadGroups I={merged_bam} O={merged_rg_bam} RGID=familymix RGLB=familymix RGPL=ILLUMINA RGPU=familymix RGSM=familymix'
-    print(cmd)
-    os.system(cmd)
-    # index final merged file
-    cmd = f'sambamba index {merged_rg_bam}'
-    os.system(cmd)
-
-    # remove merged bam file before rg replacement
-    cmd = f'rm -rf {merged_bam}'
+   
+    cmd = f'samtools index -@ {threads-1} {merged_bam}'
     os.system(cmd)
 
 
