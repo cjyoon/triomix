@@ -97,7 +97,7 @@ python $SCRIPTPATH/simulate_familial_mixture.py \
 	-s sibling.cram  \
 	-r 0.10 0.20 0.40 0.30 -o complexmix 
 
-# run TrioMix on mother contaminated data
+# run TrioMix on the complex contaminated case
 python $SCRIPTPATH/triomix.py \
 	-f father.cram \
 	-m mother.cram \
