@@ -4,23 +4,23 @@
 
 # download M008 family's WGS from 1000 genomes project ftp.
 # proband
-curl ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989418/NA19662.final.cram  -o proband.cram
-curl ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989418/NA19662.final.cram.crai  -o proband.cram.crai
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989418/NA19662.final.cram  -O proband.cram
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989418/NA19662.final.cram.crai  -O proband.cram.crai
 
 # father
-wget ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR323/ERR3239902/NA19661.final.cram -O father.cram
-wget ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR323/ERR3239902/NA19661.final.cram.crai -O father.cram.crai
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR323/ERR3239902/NA19661.final.cram -O father.cram
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR323/ERR3239902/NA19661.final.cram.crai -O father.cram.crai
 
 # mother
-wget ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989417/NA19660.final.cram -O mother.cram
-wget ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989417/NA19660.final.cram.crai -O mother.cram.crai
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989417/NA19660.final.cram -O mother.cram
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989417/NA19660.final.cram.crai -O mother.cram.crai
 
 # sibling
-wget ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989425/NA19685.final.cram -O sibling.cram
-wget ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989425/NA19685.final.cram.crai -O sibling.cram.crai
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989425/NA19685.final.cram -O sibling.cram
+wget -nc ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989425/NA19685.final.cram.crai -O sibling.cram.crai
 
 # download the reference fasta file
-wget https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta
+wget -nc https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta
 samtools faidx Homo_sapiens_assembly38.fasta
 
 
@@ -30,77 +30,61 @@ SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 
 ##################################
-# sibling contamination in offspring simulation. Calculating the total read in the CRAM file can take a while.
+# offspring contaminated by a sibling simulation
 python $SCRIPTPATH/simulate_familial_mixture.py \
 	-f father.cram \
 	-m mother.cram \
 	-c proband.cram \
 	-s sibling.cram \
-	-r 0 0 0.75 0.25 -o sibling25_in_offspring 
+	-r 0 0 0.75 0.25 -o offspring75_sibling25
 
-# run TrioMix on sibling contaminated data
-python $SCRIPTPATH/triomix.py -f father.cram \
+# run TrioMix on offspring contaminated by a sibling
+python $SCRIPTPATH/triomix.py \
+	-f father.cram \
 	-m mother.cram \
-	-c sibling25_in_offspring/familymix.bam \
-	-r Homo_sapiens_assembly38.fasta -t 4 \
+	-c offspring75_sibling25/familymix.bam \
+	-r Homo_sapiens_assembly38.fasta -t 8 \
 	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
-	-p sibling25_in_offspring -o results
+	-p offspring75_sibling25 -o results
 
 
 ##################################
-# mother contamination by offspring simulation
+# offspring contaminated by mother simulation
 python $SCRIPTPATH/simulate_familial_mixture.py \
 	-f father.cram \
 	-m mother.cram \
 	-c proband.cram \
 	-s sibling.cram \
-	-r 0 0.25 0.75 0 -o mother25_in_offspring
+	-r 0 0.25 0.75 0 -o offspring75_mother25
 
-# run TrioMix on mother contaminated data
-python $SCRIPTPATH/triomix.py -f father.cram \
+# run TrioMix on offspring contaminated by mother
+python $SCRIPTPATH/triomix.py \
+	-f father.cram \
 	-m mother.cram \
-	-c mother25_in_offspring/familymix.bam \
-	-r Homo_sapiens_assembly38.fasta -t 4 \
+	-c offspring75_mother25/familymix.bam \
+	-r Homo_sapiens_assembly38.fasta -t 8 \
 	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
-	-p mother25_in_offspring -o results
+	-p offspring75_mother25 -o results
 
 
 
 ##################################
-# father contamination in offspring simulation
+# offspring contaminated by father simulation
 python $SCRIPTPATH/simulate_familial_mixture.py \
 	-f father.cram \
 	-m mother.cram \
 	-c proband.cram \
 	-s sibling.cram  \
-	-r 0.25 0 0.75 0 -o father25_in_offspring
+	-r 0.25 0 0.75 0 -o offspring75_father25
 
-# run TrioMix on mother contaminated data
-python $SCRIPTPATH/triomix.py -f father.cram \
-	-m mother.cram \
-	-c father25_in_offspring/familymix.bam \
-	-r Homo_sapiens_assembly38.fasta -t 4 \
-	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
-	-p father25_in_offspring -o results
-
-
-##################################
-# mother contamination in father simulation
-python $SCRIPTPATH/simulate_familial_mixture.py \
+# run TrioMix on offspring contaminated by father
+python $SCRIPTPATH/triomix.py \
 	-f father.cram \
 	-m mother.cram \
-	-c proband.cram \
-	-s sibling.cram  \
-	-r 0.75 0.25 0 0 -o mother25_in_father 
-
-# run TrioMix on mother contaminated data
-python $SCRIPTPATH/triomix.py -f mother25_in_father/familymix.bam \
-	-m mother.cram \
-	-c proband.cram \
-	-r Homo_sapiens_assembly38.fasta -t 4 \
+	-c offspring75_father25/familymix.bam \
+	-r Homo_sapiens_assembly38.fasta -t 8 \
 	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
-	-p mother25_in_father -o results \
-	--parent
+	-p offspring75_father25 -o results
 
 
 
@@ -114,29 +98,51 @@ python $SCRIPTPATH/simulate_familial_mixture.py \
 	-r 0.10 0.20 0.40 0.30 -o complexmix 
 
 # run TrioMix on mother contaminated data
-python $SCRIPTPATH/triomix.py -f father.cram \
+python $SCRIPTPATH/triomix.py \
+	-f father.cram \
 	-m mother.cram \
 	-c complexmix/familymix.bam \
-	-r Homo_sapiens_assembly38.fasta -t 4 \
+	-r Homo_sapiens_assembly38.fasta -t 8 \
 	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
 	-p complexmix -o results
 
 
 ##################################
-# offspring contamination in father simulation
+# mother contaminated by offspring simulation
 python $SCRIPTPATH/simulate_familial_mixture.py \
 	-f father.cram \
 	-m mother.cram \
 	-c proband.cram \
 	-s sibling.cram  \
-	-r 0.75 0 0.25 0 -o offspring25_in_father
+	-r 0 0.75 0.25 0 -o mother75_offspring25
 
-# run TrioMix on mother contaminated data
-python $SCRIPTPATH/triomix.py -f offspring25_in_father/familymix.bam \
+# run TrioMix on father contaminated by offspring, parent mode
+python $SCRIPTPATH/triomix.py \
+	-f mother75_offspring25/familymix.bam \
 	-m mother.cram \
 	-c proband.cram \
-	-r Homo_sapiens_assembly38.fasta -t 4 \
+	-r Homo_sapiens_assembly38.fasta -t 8 \
 	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
-	-p offspring25_in_father -o results \
+	-p mother75_offspring25 -o results \
 	--parent 
+
+
+##################################
+# mother contaminated by father simulation
+python $SCRIPTPATH/simulate_familial_mixture.py \
+	-f father.cram \
+	-m mother.cram \
+	-c proband.cram \
+	-s sibling.cram  \
+	-r 0.25 0.75 0 0 -o mother75_father25 
+
+# run TrioMix on mother contaminated data
+python $SCRIPTPATH/triomix.py \
+	-f mother75_father25/familymix.bam \
+	-m mother.cram \
+	-c proband.cram \
+	-r Homo_sapiens_assembly38.fasta -t 8 \
+	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
+	-p mother75_father25 -o results \
+	--parent
 
