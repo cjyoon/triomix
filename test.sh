@@ -116,7 +116,7 @@ python $SCRIPTPATH/simulate_familial_mixture.py \
 	-s sibling.cram  \
 	-r 0 0.75 0.25 0 -o mother75_offspring25
 
-# run TrioMix on father contaminated by offspring, parent mode
+# run TrioMix on mother contaminated by offspring, parent mode
 python $SCRIPTPATH/triomix.py \
 	-f mother75_offspring25/familymix.bam \
 	-m mother.cram \
@@ -136,7 +136,7 @@ python $SCRIPTPATH/simulate_familial_mixture.py \
 	-s sibling.cram  \
 	-r 0.25 0.75 0 0 -o mother75_father25 
 
-# run TrioMix on mother contaminated data
+# run TrioMix on mother contaminated by father, parent mode
 python $SCRIPTPATH/triomix.py \
 	-f mother75_father25/familymix.bam \
 	-m mother.cram \
