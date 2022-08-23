@@ -18,7 +18,7 @@ VERSION='0.0.1'
 def argument_parser():
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser(prog='triomix')
-    parser.add_argument('--version', action='version', version='%(prog)s ' + VERSION)
+    parser.add_argument('--version', action='version', version='%(prog)s v' + VERSION)
     parser.add_argument('-f', '--father', required=True, help="Father's BAM or CRAM file")
     parser.add_argument('-m', '--mother', required=True, help="Mother's BAM or CRAM file")
     parser.add_argument('-c', '--child', required=True, help="Child's BAM or CRAM file")
