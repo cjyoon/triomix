@@ -1,9 +1,3 @@
-# infer the most likely chimeric ratio from data
-# 2019.08.07 cjyoon
-# 2021.12.19 cjyoon added/fixed parent mix
-# 2021.12.23 cjyoon joint analysis of offspring, sibling, mother, and father.
-# 2021.12.24 cjyoon --runmode argument added, both single and joint mode can be run
-# 2022.01.28 cjyoon grid search if convergence fails 
 suppressMessages(library(tidyverse))
 suppressMessages(library(optparse))
 suppressMessages(library(ggplot2))
