@@ -88,9 +88,8 @@ df_mother_by_child = df %>% filter(mother_vaf < 1) %>% filter(mother_depth - mot
 df_father_by_child = df %>% filter(father_vaf < 1) %>% filter(father_depth - father_alt >1)
 
 
-
 # MLE fitting 
-if(dim(df_mother_by_child)[1]>2){
+if(dim(df_mother_by_child)[1]>0){
   mother_by_child = mle2(contam_in_mother_nll, start=list(par=0.5), lower=list(par=0.5), upper=list(par=1), data=list(df=df_mother_by_child), method='Brent')
   mother_by_child_res = coef(mother_by_child)[['par']]
 }else{
@@ -98,7 +97,7 @@ if(dim(df_mother_by_child)[1]>2){
 }
 
 
-if(dim(df_father_by_child)[1]>2){
+if(dim(df_father_by_child)[1]>0){
   father_by_child = mle2(contam_in_father_nll, start=list(par=0.5), lower=list(par=0.5), upper=list(par=1), data=list(df=df_father_by_child), method='Brent')
   father_by_child_res = coef(father_by_child)[['par']]
 }else{
@@ -117,12 +116,20 @@ df_mother_by_father = df %>% filter(mother_vaf < 1) %>% filter(mother_depth - mo
 
 
 
+if(dim(df_mother_by_father)[1]>0){
+  mother_by_father = mle2(contam_in_mother_nll, start=list(par=0.5), lower=list(par=0.5), upper=list(par=1), data=list(df=df_mother_by_father), method='Brent')
+  mother_by_father_res = coef(mother_by_father)[['par']]
+}else{
+  mother_by_father_res=NA
+}
 
-mother_by_father = mle2(contam_in_mother_nll, start=list(par=0.5), lower=list(par=0.5), upper=list(par=1), data=list(df=df_mother_by_father), method='Brent')
-father_by_mother = mle2(contam_in_father_nll, start=list(par=0.5), lower=list(par=0.5), upper=list(par=1), data=list(df=df_father_by_mother), method='Brent')
+if(dim(df_father_by_mother)[1]>0){
+  father_by_mother = mle2(contam_in_father_nll, start=list(par=0.5), lower=list(par=0.5), upper=list(par=1), data=list(df=df_father_by_mother), method='Brent')
+  father_by_mother_res = coef(father_by_mother)[['par']]
+}else{
+  father_by_mother_res=NA
+}
 
-mother_by_father_res = coef(mother_by_father)[['par']]
-father_by_mother_res = coef(father_by_mother)[['par']]
 
 
 v_mother  = 2*mother_by_father_res -1

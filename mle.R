@@ -216,57 +216,64 @@ if(upd==0){
 
 summary_df = list(input_file = input_file)
 
-if(run_mode %in% c('all', 'joint')){
-  parent_diff_result = mle2(parent_diff_nll, start=list(par=0), lower=list(par=-1), upper=list(par=1), data=list(df=df_homoalthomoref), method='Brent')
-  parent_diff_value = coef(parent_diff_result)[['par']]
+if(dim(df_homoalthomoref)[1] > 0 & dim(df_homoref_het)[1]>0){
+  if(run_mode %in% c('all', 'joint')){
+    parent_diff_result = mle2(parent_diff_nll, start=list(par=0), lower=list(par=-1), upper=list(par=1), data=list(df=df_homoalthomoref), method='Brent')
+    parent_diff_value = coef(parent_diff_result)[['par']]
 
-  # using the differnce between (mother-father=parent_diff) use this as a constraint, then find values for mother(x) and sibling(z) 
-  mother_sibling_mle = mle2(family_mix_nll, start=list(x=max(parent_diff_value, 0), z=0), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B')
-  convergence_status = mother_sibling_mle@details$convergence
-  # check for convergence of mle
-  if(convergence_status!=0){
-    print('Failed initial convergence of mle. Grid searching to estimate new initial values for optimizing')
-    # use grid search to find a new starting point
-    ll_space = as_tibble(expand.grid(x=0:100/100, z=0:50/100)) %>% filter(1-2*x+parent_diff_value-z >=0 & z<=(1-2*x+parent_diff_value)/2) %>% mutate(ll = family_mix_nll_vect_par(df=df_homoref_het, k=parent_diff_value, x=x, z=z))
-    x_grid_estimate = as.double(ll_space[which(ll_space$ll == min(ll_space$ll)), 'x'])
-    z_grid_estimate = as.double(ll_space[which(ll_space$ll == min(ll_space$ll)), 'z'])
-    print(paste0('Initial guess for mother(x)=', round(x_grid_estimate, 4), ' sibling(z)=', round(z_grid_estimate, 4)))
-    mother_sibling_mle = mle2(family_mix_nll, start=list(x=x_grid_estimate, z=z_grid_estimate), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B', , control = list(maxit = 1e4, pgtol = 0, ndeps = c(1e-6, 1e-6), factr=0))
+    # using the differnce between (mother-father=parent_diff) use this as a constraint, then find values for mother(x) and sibling(z) 
+    mother_sibling_mle = mle2(family_mix_nll, start=list(x=max(parent_diff_value, 0), z=0), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B')
     convergence_status = mother_sibling_mle@details$convergence
+    # check for convergence of mle
+    if(convergence_status!=0){
+      print('Failed initial convergence of mle. Grid searching to estimate new initial values for optimizing')
+      # use grid search to find a new starting point
+      ll_space = as_tibble(expand.grid(x=0:100/100, z=0:50/100)) %>% filter(1-2*x+parent_diff_value-z >=0 & z<=(1-2*x+parent_diff_value)/2) %>% mutate(ll = family_mix_nll_vect_par(df=df_homoref_het, k=parent_diff_value, x=x, z=z))
+      x_grid_estimate = as.double(ll_space[which(ll_space$ll == min(ll_space$ll)), 'x'])
+      z_grid_estimate = as.double(ll_space[which(ll_space$ll == min(ll_space$ll)), 'z'])
+      print(paste0('Initial guess for mother(x)=', round(x_grid_estimate, 4), ' sibling(z)=', round(z_grid_estimate, 4)))
+      mother_sibling_mle = mle2(family_mix_nll, start=list(x=x_grid_estimate, z=z_grid_estimate), lower=list(x=max(parent_diff_value, 0), z=0), upper=list(x=(1+parent_diff_value)/2, z=0.5), fixed=list(k=parent_diff_value), data=list(df=df_homoref_het), method='L-BFGS-B', , control = list(maxit = 1e4, pgtol = 0, ndeps = c(1e-6, 1e-6), factr=0))
+      convergence_status = mother_sibling_mle@details$convergence
+    }
+
+
+    mother_fraction = coef(mother_sibling_mle)[['x']]
+    sibling_fraction = coef(mother_sibling_mle)[['z']]
+    father_fraction = mother_fraction - parent_diff_value #(y=x-k)
+
+    summary_df$child_contam_by_sibling_joint = sibling_fraction
+    summary_df$child_contam_by_father_joint = father_fraction
+    summary_df$child_contam_by_mother_joint = mother_fraction
+    summary_df$convergence_joint=convergence_status
+  }
+
+  if(run_mode %in% c('all', 'single')){
+     mother_single_mle = mle2(parent_diff_nll_single, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=df_homoalthomoref), method='Brent')
+     father_single_mle = mle2(parent_diff_nll_single, start=list(par=0), lower=list(par=-1), upper=list(par=0), data=list(df=df_homoalthomoref), method='Brent')
+     sibling_single_mle = mle2(sibling_nll, start=list(par=0), lower=list(par=0), upper=list(par=0.5), data=list(df=df_homoref_het), method='Brent')
+
+     mother_fraction_single = coef(mother_single_mle)[['par']]
+     father_fraction_single = -coef(father_single_mle)[['par']]
+     sibling_fraction_single = coef(sibling_single_mle)[['par']]
+
+     summary_df$child_contam_by_sibling = sibling_fraction_single
+     summary_df$child_contam_by_father = father_fraction_single
+     summary_df$child_contam_by_mother = mother_fraction_single
+
   }
 
 
-  mother_fraction = coef(mother_sibling_mle)[['x']]
-  sibling_fraction = coef(mother_sibling_mle)[['z']]
-  father_fraction = mother_fraction - parent_diff_value #(y=x-k)
+    
+  summary_df$denovo_error_rate = denovo_error_rate  
 
-  summary_df$child_contam_by_sibling_joint = sibling_fraction
-  summary_df$child_contam_by_father_joint = father_fraction
-  summary_df$child_contam_by_mother_joint =mother_fraction
-  summary_df$convergence_joint=convergence_status
-}
 
-if(run_mode %in% c('all', 'single')){
-   mother_single_mle = mle2(parent_diff_nll_single, start=list(par=0), lower=list(par=0), upper=list(par=1), data=list(df=df_homoalthomoref), method='Brent')
-   father_single_mle = mle2(parent_diff_nll_single, start=list(par=0), lower=list(par=-1), upper=list(par=0), data=list(df=df_homoalthomoref), method='Brent')
-   sibling_single_mle = mle2(sibling_nll, start=list(par=0), lower=list(par=0), upper=list(par=0.5), data=list(df=df_homoref_het), method='Brent')
-
-   mother_fraction_single = coef(mother_single_mle)[['par']]
-   father_fraction_single = -coef(father_single_mle)[['par']]
-   sibling_fraction_single = coef(sibling_single_mle)[['par']]
-
-   summary_df$child_contam_by_sibling = sibling_fraction_single
-   summary_df$child_contam_by_father = father_fraction_single
-   summary_df$child_contam_by_mother = mother_fraction_single
 
 }
-
 summary_df$groupA_father = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
 summary_df$groupA_mother = df_homoalthomoref %>% filter(homoalt_parent=='M') %>% dim %>% `[[`(1)
 summary_df$groupB_father = df_homoref_het %>% filter(hetero_parent=='F') %>% dim %>% `[[`(1)
 summary_df$groupB_mother = df_homoref_het %>% filter(hetero_parent=='M') %>% dim %>% `[[`(1)
-  
-summary_df$denovo_error_rate = denovo_error_rate  
+
 summary_df = data.frame(summary_df)
 
 if(opt$wide==0){

@@ -56,6 +56,9 @@ counts_df = counts_df %>% rename(chromosome=chrom, x=pos, y=vaf)
 df_homoalt_father = counts_df %>% filter(father_vaf==1 & mother_vaf==0) %>% select(chromosome, x, y)
 df_homoalt_mother = counts_df %>% filter(mother_vaf==1 & father_vaf==0) %>% select(chromosome, x, y)
 
+print(dim(df_homoalt_father))
+print(dim(df_homoalt_mother))
+
 homorefalt_segments = data.frame()
 for(chrom in unique(counts_df$chromosome)){
   
@@ -64,7 +67,8 @@ for(chrom in unique(counts_df$chromosome)){
   
   for(parent in c('father', 'mother')){
     df_homoalt_parent = df_homoalt[[parent]]
-    df_homoalt_parent = dropSegmentationOutliers(df_homoalt_parent)
+    if(dim(df_homoalt_parent)[1]>1){ # run only if more than 1 data point exists
+      df_homoalt_parent = dropSegmentationOutliers(df_homoalt_parent)
     
     gaps <- findLargeGaps(df_homoalt_parent, minLength=segment_length * 1e+06)
     knownSegments <- gapsToSegments(gaps)
@@ -75,9 +79,15 @@ for(chrom in unique(counts_df$chromosome)){
     segmented = segmented %>% select(-sampleName)
     segmented$parent = parent
     homorefalt_segments = bind_rows(homorefalt_segments, segmented)
+    }
   }
 }
-homorefalt_segments = homorefalt_segments %>% mutate(chromosome=convert_integer_to_chrom_vec(chromosome)) %>% arrange(desc(parent))
+
+if(dim(homorefalt_segments)[1]>0){
+  homorefalt_segments = homorefalt_segments %>% mutate(chromosome=convert_integer_to_chrom_vec(chromosome)) %>% arrange(desc(parent))
+}else{
+  print('segmentation not performed due to lack of GroupA variants')
+}
 
 
 output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.upd.segments.tsv')))

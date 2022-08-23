@@ -85,11 +85,14 @@ plot_vaf <- function(count_df, parent, reference_fai_dict, total_genome_length, 
   
   grid.yaxis(at=c(0, 0.5, 1), label=c(0, 0.5, 1), gp = gpar(fontsize = 14))
   # grid.text('VAF', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'), gp = gpar(fontsize = 24))
-  grid.points(
+  if(dim(count_df)[1]>0){
+    grid.points(
     x=count_df$numeric_pos/total_genome_length, 
     y=count_df$vaf, 
     gp=gpar(col=color, alpha=0.3), pch=16, size = unit(0.5, 'char')
-  )
+    )
+  }
+
   grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='black',lwd=2, lty=2))
   
   popViewport(1)
@@ -117,11 +120,13 @@ plot_depth <- function(count_df, reference_fai_dict, total_genome_length, downsa
   
   count_df = count_df %>% sample_frac(downsample)
   
-  grid.points(
-    x=count_df$numeric_pos/total_genome_length, 
-    y=count_df$depth/(mean_depth*2), 
-    gp=gpar(alpha=0.3), pch=16,  size = unit(0.5, 'char')
-  )
+  if(dim(count_df)[1]>0){
+    grid.points(
+      x=count_df$numeric_pos/total_genome_length, 
+      y=count_df$depth/(mean_depth*2), 
+      gp=gpar(alpha=0.3), pch=16,  size = unit(0.5, 'char')
+    )
+  }
   grid.yaxis(at=seq(0, mean_depth*2, mean_depth)/(mean_depth*2), label=seq(0, mean_depth*2, mean_depth),  gp = gpar(fontsize = 14))
   # grid.text('Depth', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'), gp = gpar(fontsize = 24))
   grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='gray',lwd=2, lty=2))
@@ -159,7 +164,6 @@ if(opt$output_format=='png'){
   output_path = normalizePath(file.path(opt$output_dir, paste0(basename(counts_path), '.plot.pdf')))
   pdf(output_path, width=width, height=height)
 }
-
 
 pushViewport(viewport(x=0.1, y=0, width=0.9, height=1, just=c('left', 'bottom')))
 pushViewport(viewport(x=0.0,  y=0, width=1, height=0.2, just=c('left', 'bottom')))

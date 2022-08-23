@@ -96,12 +96,14 @@ plot_parent_vaf <- function(count_df, parent, reference_fai_dict, total_genome_l
   
   grid.yaxis(at=c(0, 0.5, 1), label=c(0, 0.5, 1), gp = gpar(fontsize = 14))
   # grid.text('VAF', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'), gp = gpar(fontsize = 24))
-  grid.points(
-    x=count_df$numeric_pos/total_genome_length, 
-    y=count_df[[parent_vaf_column]], 
-    gp=gpar(col=color, alpha=0.3), pch=16, size = unit(0.5, 'char')
-  )
-  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='black',lwd=1, lty=2))
+  if(dim(count_df)[1]>0){
+    grid.points(
+      x=count_df$numeric_pos/total_genome_length, 
+      y=count_df[[parent_vaf_column]], 
+      gp=gpar(col=color, alpha=0.3), pch=16, size = unit(0.5, 'char')
+    )
+  }
+  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='black',lwd=2, lty=2))
   
   popViewport(1)
 }
@@ -130,14 +132,16 @@ plot_parent_depth <- function(count_df, parent, reference_fai_dict, total_genome
   
   parent_depth_column = paste0(parent, '_depth')
   
-  grid.points(
-    x=count_df$numeric_pos/total_genome_length, 
-    y=count_df[[parent_depth_column]]/(mean_depth*2), 
-    gp=gpar(alpha=0.3), pch=16,  size = unit(0.5, 'char')
-  )
+  if(dim(count_df)[1]>0){
+    grid.points(
+      x=count_df$numeric_pos/total_genome_length, 
+      y=count_df[[parent_depth_column]]/(mean_depth*2), 
+      gp=gpar(alpha=0.3), pch=16,  size = unit(0.5, 'char')
+      )
+  }
   grid.yaxis(at=seq(0, mean_depth*2, mean_depth)/(mean_depth*2), label=seq(0, mean_depth*2, mean_depth),  gp = gpar(fontsize = 14))
   # grid.text('Depth', rot = 90, x=-0.04, y=0.5, just=c('center', 'bottom'), gp = gpar(fontsize = 24))
-  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='gray',lwd=1, lty=2))
+  grid.lines(x=c(0, 1), y=c(0.5, 0.5), gp=gpar(col='gray',lwd=2, lty=2))
   
   popViewport(1)
 }
