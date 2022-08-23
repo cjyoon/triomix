@@ -16,7 +16,7 @@ import numpy as np
 def argument_parser():
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser(prog='triomix')
-    parser.add_argument('--version', action='version', version='%(prog)s 1.0.0')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.1')
     parser.add_argument('-f', '--father', required=True, help="Father's BAM or CRAM file")
     parser.add_argument('-m', '--mother', required=True, help="Mother's BAM or CRAM file")
     parser.add_argument('-c', '--child', required=True, help="Child's BAM or CRAM file")

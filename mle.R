@@ -254,15 +254,11 @@ if(dim(df_homoalthomoref)[1] > 0 & dim(df_homoref_het)[1]>0){
      summary_df$child_contam_by_father = father_fraction_single
      summary_df$child_contam_by_mother = mother_fraction_single
 
-  }
-
-
-    
-  summary_df$denovo_error_rate = denovo_error_rate  
-
-
-
+  }    
 }
+
+summary_df$denovo_error_rate = denovo_error_rate  
+
 summary_df$groupA_father = df_homoalthomoref %>% filter(homoalt_parent=='F') %>% dim %>% `[[`(1)
 summary_df$groupA_mother = df_homoalthomoref %>% filter(homoalt_parent=='M') %>% dim %>% `[[`(1)
 summary_df$groupB_father = df_homoref_het %>% filter(hetero_parent=='F') %>% dim %>% `[[`(1)
