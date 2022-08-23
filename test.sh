@@ -118,8 +118,8 @@ python $SCRIPTPATH/simulate_familial_mixture.py \
 
 # run TrioMix on mother contaminated by offspring, parent mode
 python $SCRIPTPATH/triomix.py \
-	-f mother75_offspring25/familymix.bam \
-	-m mother.cram \
+	-f father.cram \
+	-m mother75_offspring25/familymix.bam \
 	-c proband.cram \
 	-r Homo_sapiens_assembly38.fasta -t 8 \
 	-s $SCRIPTPATH/common_snp/grch38_common_snp.bed.gz \
