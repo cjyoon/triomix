@@ -20,15 +20,25 @@ def argument_parser():
 
     return args['father'], args['mother'], args['child'], args['sibling'], args['output_dir'], args['ratio']
 
+
 def count_reads(bamfile):
-    """count total reads in a bamfile to adjust for the sampling ratio"""
+    """count total autosomal reads in a bamfile to adjust for the sampling ratio"""
     count= float(0)
     if bamfile != None:
         bam = pysam.AlignmentFile(bamfile)
-        for read in bam.fetch():
-            count += 1
+        autosome_list = []
+        for contig in (bam.header['SQ']):
+            if re.search(r'^chr[0-9]+$|^[0-9]+$', contig['SN']):
+                autosome_list.append(contig['SN'])
+        print(autosome_list)
+        for autosome in autosome_list:
+            print(autosome)
+            for read in bam.fetch(autosome):
+                count += 1
 
     return count
+
+
 
 def subsample_bam(bamfile, subsample_ratio, subsampled_bam, threads):
     """subsample bam that will be merged later"""
@@ -40,12 +50,16 @@ def subsample_bam(bamfile, subsample_ratio, subsampled_bam, threads):
 
 def calculate_adjusted_sampling_ratio(readcount_dict, ratio):
     """calculate thea adjusted sampling ratio that accounts for total read counts of each bam"""
-
-    father_ratio = ratio[0]*readcount_dict['offspring']/readcount_dict['father']
-    mother_ratio = ratio[1]*readcount_dict['offspring']/readcount_dict['mother']
-    offspring_ratio = ratio[2]
-    sibling_ratio = ratio[3]*readcount_dict['offspring']/readcount_dict['sibling']
-
+    # use the sample with minimal # of reads as a base
+    min_read_indiv = min(readcount_dict, key=readcount_dict.get)
+    print(min_read_indiv)
+    min_read = readcount_dict[min_read_indiv]
+    
+    father_ratio = ratio[0]*min_read/readcount_dict['father']
+    mother_ratio = ratio[1]*min_read/readcount_dict['mother']
+    offspring_ratio = ratio[2]*min_read/readcount_dict['offspring']
+    sibling_ratio = ratio[3]*min_read/readcount_dict['sibling']
+        
     return father_ratio, mother_ratio, offspring_ratio, sibling_ratio
 
 
@@ -64,11 +78,11 @@ def main():
 
         print(ratio)
 
-        subsampled_father = os.path.join(output_dir, re.sub(r'.bam$', f'_{ratio[0]}.bam', os.path.basename(father)))
-        subsampled_mother = os.path.join(output_dir, re.sub(r'.bam$', f'_{ratio[1]}.bam', os.path.basename(mother)))
-        subsampled_offspring = os.path.join(output_dir, re.sub(r'.bam$', f'_{ratio[2]}.bam', os.path.basename(offspring)))
+        subsampled_father = os.path.join(output_dir, re.sub(r'.bam$|.cram$', f'_{ratio[0]}.bam', os.path.basename(father)))
+        subsampled_mother = os.path.join(output_dir, re.sub(r'.bam$|.cram$', f'_{ratio[1]}.bam', os.path.basename(mother)))
+        subsampled_offspring = os.path.join(output_dir, re.sub(r'.bam$|.cram$', f'_{ratio[2]}.bam', os.path.basename(offspring)))
         if sibling !=None:
-            subsampled_sibling = os.path.join(output_dir, re.sub(r'.bam$', f'_{ratio[3]}.bam', os.path.basename(sibling)))
+            subsampled_sibling = os.path.join(output_dir, re.sub(r'.bam$|.cram$', f'_{ratio[3]}.bam', os.path.basename(sibling)))
 
 
         if sibling != None:
