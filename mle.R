@@ -19,12 +19,13 @@ opt = parse_args(opt_parser)
 ###############################################################################
 ##### vectorized likelihood calculations and negative-log-likelihood function 
 # avoid log(0) = -Inf
-check_float_min <-function(value){
+check_float_min_u <-function(value){
   if(value==0){
     value = .Machine$double.xmin # to avoid falling in -Inf 
   }
   return(value)
 }
+check_float_min = Vectorize(check_float_min_u)
 
 ###############################################################################
 # simple mix of sibling only
