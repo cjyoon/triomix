@@ -138,10 +138,9 @@ def filter_regions_with_snv(region_list, snp_bed):
 
     return keep_list
 
-def mpileup(father_bam, mother_bam, child_bam, region, output_dir, snp_bed):
+def mpileup(father_bam, mother_bam, child_bam, region, output_dir, snp_bed, prefix):
     """Run mpileup in a defined region of interest"""
     
-    child_id = sampleNameBam(child_bam)
     region_string = re.sub(r':|-', '_', region)
 
     # if SNP-BED file is provided 
@@ -151,7 +150,7 @@ def mpileup(father_bam, mother_bam, child_bam, region, output_dir, snp_bed):
         snp_bed_string = ''
 
     # output_file = os.path.join(output_dir, f'{child_id}_{region_string}.mpileup')
-    output_file_compressed = os.path.join(output_dir, f'{child_id}_{region_string}.mpileup.gz')
+    output_file_compressed = os.path.join(output_dir, f'{prefix}_{region_string}.mpileup.gz')
     # print(output_file_compressed)
 
     if not os.path.isfile(output_file_compressed):
@@ -537,7 +536,7 @@ def main():
     os.system(f'mkdir -p {tmp_region_dir}')
     arg_list = []
     for region in region_splits:
-        arg_list.append((father_bam, mother_bam, child_bam, region, tmp_region_dir, snp_bed))
+        arg_list.append((father_bam, mother_bam, child_bam, region, tmp_region_dir, snp_bed, prefix))
 
     # run with multithreading
     print('variant calling')
